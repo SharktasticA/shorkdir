@@ -1,5 +1,7 @@
 /*
     ######################################################
+    ##             SHORK UTILITY - SHORKDIR             ##
+    ######################################################
     ## A lightweight Linux terminal-based file browser  ##
     ######################################################
     ## Licence: GNU GENERAL PUBLIC LICENSE Version 3    ##
