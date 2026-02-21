@@ -12,7 +12,7 @@ shorkdir: $(SRC)
 	$(CC) $(CFLAGS) $(SRC) -o shorkdir $(LDFLAGS)
 	$(STRIP) shorkdir
 
-PREFIX ?= /usr/
+PREFIX ?= /usr
 BINDIR = $(PREFIX)/bin
 
 install: shorkdir
