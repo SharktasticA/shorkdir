@@ -216,6 +216,28 @@ struct winsize getTerminalSize(void)
 
 /**
  * @param termSize winsize struct containing the current terminal size
+ * @param entryCount Number of entries in current directory
+ * @param cursor Current line/row cursor position
+ */
+void printDebug(struct winsize termSize, int entryCount, int cursor)
+{
+    system("clear");
+    printf("Debug\n");
+    for (int i = 0; i < termSize.ws_col; i++) printf("-");
+
+    char debug[512];
+    snprintf(debug, 512, "Term cols: %d, Term rows: %d, Dir entry count: %d, Cursor pos: %d", termSize.ws_col, termSize.ws_row, entryCount, cursor);
+    int lines = formatNewLines(debug, termSize.ws_col);
+    int availHeight = termSize.ws_row - lines - 3;
+    printf("%s\n", debug);
+    for (int i = 1; i < availHeight; i++) printf("\n");
+    
+    for (int i = 0; i < termSize.ws_col; i++) printf("-");
+    awaitInput();
+}
+
+/**
+ * @param termSize winsize struct containing the current terminal size
  * @param dirContents Pointer to one or more dirent structs for each file in the current directory
  * @param entryCount Number of entries in current directory
  * @param cursor Current line/row cursor position
@@ -365,6 +387,7 @@ void inspectEntry(struct winsize termSize, char *currPath, struct dirent *entry)
 
 int main(void)
 {
+    setvbuf(stdout, NULL, _IONBF, 0);
     atexit(disableRawMode);
 
     struct winsize termSize = getTerminalSize();
@@ -441,6 +464,10 @@ int main(void)
                         currPath[1] = '\0';
                 }
                 updateDirContents = cursor = 1;
+                break;
+
+            case DEBUG:
+                printDebug(termSize, entryCount, cursor);
                 break;
 
             case DIR_DOWN:
