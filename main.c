@@ -24,6 +24,7 @@
 
 
 
+static int fileInstalled = 0;
 static struct termios oldTERMIO;
 static int rawModeEnabled = 0;
 
@@ -230,8 +231,8 @@ void printDebug(struct winsize termSize, int entryCount, int cursor)
     printf("Debug\n");
     for (int i = 0; i < termSize.ws_col; i++) printf("-");
 
-    char debug[512];
-    snprintf(debug, 512, "Term cols: %d, Term rows: %d, Dir entry count: %d, Cursor pos: %d", termSize.ws_col, termSize.ws_row, entryCount, cursor);
+    char debug[400];
+    snprintf(debug, 400, "Term cols: %d, term rows: %d, file installed: %d, dir entries: %d, cusor pos: %d", termSize.ws_col, termSize.ws_row, fileInstalled, entryCount, cursor);
     int lines = formatNewLines(debug, termSize.ws_col);
     int availHeight = termSize.ws_row - lines - 3;
     printf("%s\n", debug);
@@ -313,7 +314,10 @@ void printFooter(struct winsize termSize)
 {
     for (int i = 0; i < termSize.ws_col; i++)
         printf("-");
-    printf("[hjkl] Navigate  [i] Inspect  [?] Help  [q] Quit ");
+    if (fileInstalled)
+        printf("[hjkl] Navigate  [i] Inspect  [?] Help  [q] Quit ");
+    else
+        printf("[hjkl] Navigate  [?] Help  [q] Quit ");
 }
 
 /**
@@ -401,6 +405,8 @@ int main(void)
 
     atexit(showCursor);
     atexit(disableRawMode);
+
+    fileInstalled = (system("file --version > /dev/null 2>&1") == 0);
 
     struct winsize termSize = getTerminalSize();
     if (termSize.ws_col < 50 || termSize.ws_row < 16)
@@ -503,7 +509,7 @@ int main(void)
                 break;
 
             case INSPECT:
-                inspectEntry(termSize, currPath, dirContents[cursor - 1]);
+                if (fileInstalled) inspectEntry(termSize, currPath, dirContents[cursor - 1]);
                 break;
 
             case HELP:
