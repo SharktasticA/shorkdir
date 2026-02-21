@@ -53,6 +53,11 @@ void awaitInput(void)
     getchar();
 }
 
+void clearScreen(void)
+{
+    printf("\033[2J\033[H");
+}
+
 /**
  * Allows qsort to compare two directory entry names.
  * @param a First entry to compare
@@ -221,7 +226,7 @@ struct winsize getTerminalSize(void)
  */
 void printDebug(struct winsize termSize, int entryCount, int cursor)
 {
-    system("clear");
+    clearScreen();
     printf("Debug\n");
     for (int i = 0; i < termSize.ws_col; i++) printf("-");
 
@@ -316,7 +321,7 @@ void printFooter(struct winsize termSize)
  */
 void printHelp(struct winsize termSize)
 {
-    system("clear");
+    clearScreen();
     printf("Help\n");
     for (int i = 0; i < termSize.ws_col; i++) printf("-");
     
@@ -373,7 +378,7 @@ void inspectEntry(struct winsize termSize, char *currPath, struct dirent *entry)
     }
     else return;
 
-    system("clear");
+    clearScreen();
     printHeader(termSize, filePath);
     int lines = formatNewLines(buffer, termSize.ws_col);
     int availHeight = termSize.ws_row - lines - 3;
@@ -383,11 +388,18 @@ void inspectEntry(struct winsize termSize, char *currPath, struct dirent *entry)
     awaitInput();
 }
 
+void showCursor(void)
+{
+    printf("\033[?25h");
+}
+
 
 
 int main(void)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
+
+    atexit(showCursor);
     atexit(disableRawMode);
 
     struct winsize termSize = getTerminalSize();
@@ -406,6 +418,8 @@ int main(void)
     }
 
     enableRawMode();
+    printf("\033[?25l");
+
     int running = 1;
     struct dirent **dirContents = NULL;
     int entryCount = 0;
@@ -433,7 +447,7 @@ int main(void)
             updateDirContents = 0;
         }
 
-        system("clear");
+        printf("\n");
         printHeader(termSize, currPath);
         printDir(termSize, dirContents, entryCount, cursor);
         printFooter(termSize);
