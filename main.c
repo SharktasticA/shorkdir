@@ -29,17 +29,29 @@ static int rawModeEnabled = 0;
 
 
 
-enum Key 
+enum NavInput 
 {
-    UP,
-    DOWN,
-    LEFT,
-    RIGHT,
-    F,
+    CURSOR_DOWN,
+    CURSOR_UP,
+    DEBUG,
+    DIR_UP,
+    DIR_DOWN,
+    HELP,
+    INSPECT,
+    QUIT,
     INVALID
 };
 
 
+
+/**
+ * Awaits for any user input.
+ */
+void awaitInput(void)
+{
+    printf("Press any key to continue... ");
+    getchar();
+}
 
 /**
  * Allows qsort to compare two directory entry names.
@@ -57,7 +69,7 @@ int compareDirName(const void *a, const void *b)
 /**
  * Enables the terminal's canonical input. Used only when the program exits.
  */
-void disableRawMode()
+void disableRawMode(void)
 {
     if (rawModeEnabled)
         tcsetattr(STDIN_FILENO, TCSANOW, &oldTERMIO);
@@ -67,7 +79,7 @@ void disableRawMode()
  * Disables the terminal's canonical input so that things like getchar do not
  * wait until enter is pressed.
  */
-void enableRawMode()
+void enableRawMode(void)
 {
     struct termios newTERMIO;
     tcgetattr(STDIN_FILENO, &oldTERMIO);
@@ -75,6 +87,43 @@ void enableRawMode()
     newTERMIO.c_lflag &= ~(ICANON | ECHO);
     tcsetattr(STDIN_FILENO, TCSANOW, &newTERMIO);
     rawModeEnabled = 1;
+}
+
+/**
+ * Adds new lines to a given string based on the requested line width.
+ * @param buffer Input string
+ * @param width Characters per line
+ * @return Number of lines in the string
+ */
+int formatNewLines(char *buffer, int width)
+{
+    if (!buffer || width < 1) return 0;
+
+    size_t bufferStrLen = strlen(buffer);
+    int lines = 1;
+    int lastSpace = -1;
+    int widthCount = 1;
+    for (int i = 0; i < bufferStrLen; i++)
+    {
+        if (buffer[i] == ' ') lastSpace = i;
+        else if (buffer[i] == '\n')
+        {
+            lines++;
+            widthCount = 0;
+        }
+
+        if (widthCount == width)
+        {
+            if (buffer[i] == ' ') buffer[i] = '\n';
+            else if (lastSpace != -1) buffer[lastSpace] = '\n';
+            widthCount = 0;
+            lines++;
+        }
+
+        widthCount++;
+    }
+
+    return lines;
 }
 
 /**
@@ -111,9 +160,9 @@ struct dirent **getDirContents(char *currPath, int *entryCount)
 }
 
 /**
- * @return The key inputted
+ * @return The nav input action detected
  */
-enum Key getNavInput(void)
+enum NavInput getNavInput(void)
 {
     int c = getchar();
 
@@ -122,10 +171,10 @@ enum Key getNavInput(void)
         getchar();
         switch (getchar())
         {
-            case 'A': return UP;
-            case 'B': return DOWN;
-            case 'C': return RIGHT;
-            case 'D': return LEFT;
+            case 'A': return CURSOR_UP;
+            case 'B': return CURSOR_DOWN;
+            case 'C': return DIR_DOWN;
+            case 'D': return DIR_UP;
         }
     }
     else
@@ -133,11 +182,18 @@ enum Key getNavInput(void)
         c = tolower(c);
         switch (c)
         {
-            case 'k': return UP;
-            case 'j': return DOWN;
-            case 'h': return LEFT;
-            case 'l': return RIGHT;
-            case 'f': return F;
+            case 'q': return QUIT;
+            case 'w': return CURSOR_UP;
+            case 'e': return DEBUG;
+            case 'a': return DIR_UP;
+            case 's': return CURSOR_DOWN;
+            case 'd': return DIR_DOWN;
+            case 'i': return INSPECT;
+            case 'h': return DIR_UP;
+            case 'j': return CURSOR_DOWN;
+            case 'k': return CURSOR_UP;
+            case 'l': return DIR_DOWN;
+            case '?': return HELP;
         }
     }
 
@@ -230,7 +286,26 @@ void printFooter(struct winsize termSize)
 {
     for (int i = 0; i < termSize.ws_col; i++)
         printf("-");
-    printf("[H/←] ↑dir | [J/↓] ↓cur | [K/↑] ↑cur | [L/→] open | [F] Exit ");
+    printf("[hjkl] Navigate  [i] Inspect  [?] Help  [q] Quit ");
+}
+
+/**
+ * @param termSize winsize struct containing the current terminal size in columns and rows
+ */
+void printHelp(struct winsize termSize)
+{
+    system("clear");
+    printf("Help\n");
+    for (int i = 0; i < termSize.ws_col; i++) printf("-");
+    
+    char help[400] = "Key binds:\n[H/A/left] up directory [J/S/down] cursor down [K/W/up] cursor up [L/D/right] down directory [i] inspect selected (if file installed) [h] show help [q] quit\n\nEntry types:\n'd' directory 'f' regular file 'b' block device 'c' character device 'l' symbolic link 's' UNIX domain socket '|' named pipe (FIFO) '?' unknown";
+    int lines = formatNewLines(help, termSize.ws_col);
+    int availHeight = termSize.ws_row - lines - 3;
+    printf("%s\n", help);
+    for (int i = 1; i < availHeight; i++) printf("\n");
+    
+    for (int i = 0; i < termSize.ws_col; i++) printf("-");
+    awaitInput();
 }
 
 /**
@@ -252,6 +327,40 @@ void printHeader(struct winsize termSize, char *currPath)
         printf("-");
 }
 
+/**
+ * @param termSize winsize struct containing the current terminal size
+ * @param currPath Current working directory path
+ */
+void inspectEntry(struct winsize termSize, char *currPath, struct dirent *entry)
+{
+    char filePath[PATH_MAX + 256];
+    if (strcmp(currPath, "/") == 0)
+        snprintf(filePath, PATH_MAX + 256, "/%s", entry->d_name);
+    else
+        snprintf(filePath, PATH_MAX + 256, "%s/%s", currPath, entry->d_name);
+
+    char cmd[PATH_MAX + 256 + 8];
+    snprintf(cmd, PATH_MAX + 256 + 8, "file -b %s", filePath);
+    char buffer[2048];
+    FILE *stream = popen(cmd, "r");
+    if (stream)
+    {
+        if (fgets(buffer, sizeof(buffer), stream) != NULL)
+            buffer[strcspn(buffer, "\n")] = '\0';
+        pclose(stream);
+    }
+    else return;
+
+    system("clear");
+    printHeader(termSize, filePath);
+    int lines = formatNewLines(buffer, termSize.ws_col);
+    int availHeight = termSize.ws_row - lines - 3;
+    printf("%s\n", buffer);
+    for (int i = 1; i < availHeight; i++) printf("\n");
+    for (int i = 0; i < termSize.ws_col; i++) printf("-");
+    awaitInput();
+}
+
 
 
 int main(void)
@@ -259,9 +368,9 @@ int main(void)
     atexit(disableRawMode);
 
     struct winsize termSize = getTerminalSize();
-    if (termSize.ws_row < 8)
+    if (termSize.ws_col < 50 || termSize.ws_row < 16)
     {
-        perror("ERROR: terminal height too small");
+        perror("ERROR: terminal size too small (must be 50x16 or more)");
         return 1;
     }
 
@@ -306,21 +415,21 @@ int main(void)
         printDir(termSize, dirContents, entryCount, cursor);
         printFooter(termSize);
 
-        enum Key input = getNavInput();
+        enum NavInput input = getNavInput();
 
         switch (input)
         {
-            case UP:
+            case CURSOR_UP:
                 cursor--;
                 if (cursor < 1) cursor = entryCount;
                 break;
 
-            case DOWN:
+            case CURSOR_DOWN:
                 cursor++;
                 if (cursor > entryCount) cursor = 1;
                 break;
 
-            case LEFT:
+            case DIR_UP:
                 if (currPathLen > 1 && currPath[currPathLen - 1] == '/')
                     currPath[currPathLen - 1] = '\0';
                 char *lastSlash = strrchr(currPath, '/');
@@ -334,7 +443,7 @@ int main(void)
                 updateDirContents = cursor = 1;
                 break;
 
-            case RIGHT:
+            case DIR_DOWN:
                 if (entryCount > 0)
                 {
                     if (dirContents[cursor - 1]->d_type != DT_DIR)
@@ -352,7 +461,15 @@ int main(void)
                 }
                 break;
 
-            case F:
+            case INSPECT:
+                inspectEntry(termSize, currPath, dirContents[cursor - 1]);
+                break;
+
+            case HELP:
+                printHelp(termSize);
+                break;
+
+            case QUIT:
                 running = 0;
                 break;
         }
