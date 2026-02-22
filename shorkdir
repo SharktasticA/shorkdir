@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 ######################################################
 ##             SHORK UTILITY - SHORKDIR             ##
@@ -10,13 +10,13 @@
 ## Kali (links.sharktastica.co.uk)                  ##
 ######################################################
 
-./shorkdir-exec || exit 1
+"$PWD/shorkdir-exec" || exit 1
 tmp="/tmp/shorkdir_last_dir.txt"
-if [[ -f "$tmp" ]]; then
-    dir=$(<"$tmp")
+if [ -f "$tmp" ]; then
+    dir=$(cat $tmp)
     rm -f "$tmp"
 
-    if [[ -d "$dir" ]]; then
+    if [ -d "$dir" ]; then
         cd "$dir"
         exec $SHELL
     fi
