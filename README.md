@@ -69,9 +69,9 @@ When running, you are technically running a bootstrap shell script, required for
   </tr>
 </table>
 
-<table style="table-layout: fixed; width: 50%;">
+<table style="table-layout: fixed; width: 100%;">
   <tr>
-    <td style="width: 50%; text-align: center;"><img src="screenshots/86box_inspect_ascii_shork-486.png" style="width: 100%;" /></td>
+    <td style="width: 50%; text-align: center;"><img src="screenshots/86box_inspect_ascii_shork-486.png" style="width: 50%;" /></td>
   </tr>
   <tr>
     <td style="width: 50%;">Inspect screen (text file example)</td>
