@@ -137,9 +137,8 @@ int formatNewLines(char *buffer, int width)
 
         if (widthCount == width)
         {
-            if (buffer[i] == ' ') buffer[i] = '\n';
-            else if (lastSpace != -1) buffer[lastSpace] = '\n';
-            widthCount = 0;
+            if (lastSpace != -1) buffer[lastSpace] = '\n';
+            widthCount = i - lastSpace;
             lines++;
         }
 
