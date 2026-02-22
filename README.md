@@ -50,14 +50,13 @@ When running, you are technically running a bootstrap shell script, required for
 <table style="table-layout: fixed; width: 100%;">
   <tr>
     <td style="width: 50%; text-align: center;"><img src="screenshots/86box_help_shork-486.png" style="width: 100%;" /></td>
-    <td style="width: 50%; text-align: center;"><img src="screenshots/86box_inspect_ascii_shork-486.png" style="width: 100%;" /></td>
+    <td style="width: 50%; text-align: center;"><img src="screenshots/86box_edit_shork-486.png" style="width: 100%;" /></td>
   </tr>
   <tr>
     <td style="width: 50%;">Help screen</td>
-    <td style="width: 50%;">Inspect screen (text file example)</td>
+    <td style="width: 50%;">Select editor screen</td>
   </tr>
 </table>
-
 
 <table style="table-layout: fixed; width: 100%;">
   <tr>
@@ -67,5 +66,14 @@ When running, you are technically running a bootstrap shell script, required for
   <tr>
     <td style="width: 50%;">Inspect screen (executable example)</td>
     <td style="width: 50%;">Inspect screen (symbolic link example)</td>
+  </tr>
+</table>
+
+<table style="table-layout: fixed; width: 50%;">
+  <tr>
+    <td style="width: 50%; text-align: center;"><img src="screenshots/86box_inspect_ascii_shork-486.png" style="width: 100%;" /></td>
+  </tr>
+  <tr>
+    <td style="width: 50%;">Inspect screen (text file example)</td>
   </tr>
 </table>
