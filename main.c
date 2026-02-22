@@ -24,6 +24,8 @@
 
 
 
+#define DT_EXE 16
+
 enum NavInput 
 {
     CURSOR_DOWN,
@@ -148,39 +150,6 @@ int formatNewLines(char *buffer, int width)
 }
 
 /**
- * @param currPath Current working directory path
- * @param entryCount Number of entries in current directory (intended to be used by reference)
- * @return Pointer to one or more dirent structs for each file in the current directory
- */
-struct dirent **getDirContents(char *currPath, int *entryCount)
-{
-    DIR *dir;
-    *entryCount = 0;
-
-    if ((dir = opendir(currPath)) != NULL)
-    {
-        struct dirent *entry;
-        struct dirent **entries = NULL;
-
-        while ((entry = readdir(dir)) != NULL)
-        {
-            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
-                continue;
-            entries = realloc(entries, (*entryCount + 1) * sizeof(struct dirent *));
-            entries[*entryCount] = malloc(sizeof(struct dirent));
-            memcpy(entries[*entryCount], entry, sizeof(struct dirent));
-            (*entryCount)++;
-        }
-
-        closedir(dir);
-        qsort(entries, *entryCount, sizeof(struct dirent*), compareDirName);
-        return entries;
-    }
-
-    return NULL;
-}
-
-/**
  * Gets an integer input from the user.
  * @param prompt Prompt to give the user 
  * @param min Minimum allowed input (set to same as max to disable validation)
@@ -289,6 +258,53 @@ struct winsize getTerminalSize(void)
     return ws;
 }
 
+/**
+ * @param currPath Current working directory path
+ * @param entry Directory entry to check
+ */
+int isFileExecutable(char *currPath, struct dirent *entry)
+{
+    char filePath[PATH_MAX + 256];
+    snprintf(filePath, PATH_MAX + 256, "%s/%s", currPath, entry->d_name);
+    if (access(filePath, X_OK) == 0) return 1;
+    else return 0;
+}
+
+/**
+ * @param currPath Current working directory path
+ * @param entryCount Number of entries in current directory (intended to be used by reference)
+ * @return Pointer to one or more dirent structs for each file in the current directory
+ */
+struct dirent **getDirContents(char *currPath, int *entryCount)
+{
+    DIR *dir;
+    *entryCount = 0;
+
+    if ((dir = opendir(currPath)) != NULL)
+    {
+        struct dirent *entry;
+        struct dirent **entries = NULL;
+
+        while ((entry = readdir(dir)) != NULL)
+        {
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+                continue;
+            if (entry->d_type == DT_REG && isFileExecutable(currPath, entry))
+                entry->d_type = DT_EXE;
+            entries = realloc(entries, (*entryCount + 1) * sizeof(struct dirent *));
+            entries[*entryCount] = malloc(sizeof(struct dirent));
+            memcpy(entries[*entryCount], entry, sizeof(struct dirent));
+            (*entryCount)++;
+        }
+
+        closedir(dir);
+        qsort(entries, *entryCount, sizeof(struct dirent*), compareDirName);
+        return entries;
+    }
+
+    return NULL;
+}
+
 int isProgramInstalled(const char *prog)
 {
     char *path = getenv("PATH");
@@ -372,6 +388,7 @@ void printDir(struct dirent **dirContents, int entryCount, int cursor)
         {
             case DT_DIR:    prefix = 'd'; break;
             case DT_REG:    prefix = 'f'; break;
+            case DT_EXE:    prefix = 'x'; break;
             case DT_LNK:    prefix = 'l'; break;
             case DT_FIFO:   prefix = '|'; break;
             case DT_CHR:    prefix = 'c'; break;
@@ -384,9 +401,9 @@ void printDir(struct dirent **dirContents, int entryCount, int cursor)
         }
 
         if (canGoUp && i == offset)
-            printf("↑\n");
+            printf("^\n");
         else if (canGoDown && i == offset + availHeight - 1)
-            printf("↓\n");
+            printf("v\n");
         else if (i == cursor - 1)
             printf("[*] %c %s\n", prefix, dirContents[i]->d_name);
         else
@@ -666,7 +683,7 @@ int main(void)
                 break;
 
             case HELP:
-                char help[400] = "Key binds:\n[H/A/left] up directory [J/S/down] cursor down [K/W/up] cursor up [L/D/right] down directory [i] inspect selected (if file installed) [h] show help [q] quit\n\nEntry types:\n'd' directory 'f' regular file 'b' block device 'c' character device 'l' symbolic link 's' UNIX domain socket '|' named pipe (FIFO) '?' unknown";
+                char help[400] = "Key binds:\n[H/A/left] up directory [J/S/down] cursor down [K/W/up] cursor up [L/D/right] open directory/file [i] inspect selected (if file installed) [h] show help [q] quit\n\nEntry types:\n'd' directory 'f' regular file 'x' executable file 'b' block device 'c' character device 'l' symbolic link 's' UNIX domain socket '|' named pipe (FIFO) '?' unknown";
                 printGenericScreen("Help", help);
                 break;
 

@@ -28,9 +28,25 @@ Run `make install` to install to `/usr/bin` (you may need `sudo` if not installi
 
 ## Running
 
-Simply run `shorkdir` to use. Press "?" to get a list of key binds and directory entry type guide. 
+Simply run `shorkdir` to use. When running, you are technically running a bootstrap shell script, required for changing the current directory once the program exits. `shorkdir-exec` is binary itself, which can be run directly if changing directory upon exiting is not desired.
 
-When running, you are technically running a bootstrap shell script, required for changing the current directory once the program exits. `shorkdir-exec` is binary itself, which can be run directly if changing directory upon exiting is not desired.
+### Key binds
+
+<table>
+  <tr><th>Key</th><th>Function</th><th>Key</th><th>Function</th><th>Key</th><th>Function</th></tr>
+  <tr><td>H/A/left arrow</td><td>Up directory</td><td>J/S/down arrow</td><td>Move cursor down</td><td>K/W/up arrow</td><td>Move cursor up</td></tr>
+  <tr><td>L/D/right arrow</td><td>Open directory/file</td><td>i</td><td>Inspect (if `file` installed)</td><td>h</td><td>Show help screen</td></tr>
+  <tr><td>q</td><td>Quit</td><td></td><td></td><td></td><td></td></tr>
+</table>
+
+### Directory entry types
+
+<table>
+  <tr><th>Type</th><th>Meaning</th><th>Type</th><th>Meaning</th><th>Type</th><th>Meaning</th></tr>
+  <tr><td>d</td><td>Directory</td><td>f</td><td>Regular file (non-executable)</td><td>x</td><td>Regular file (executable)</td></tr>
+  <tr><td>b</td><td>Block device</td><td>c</td><td>Character device</td><td>l</td><td>Symbolic link</td></tr>
+  <tr><td>s</td><td>UNIX domain socket</td><td>|</td><td>Named pipe (FIFO)</td><td>?</td><td>Unknown</td></tr>
+</table>
 
 
 
@@ -60,20 +76,20 @@ When running, you are technically running a bootstrap shell script, required for
 
 <table style="table-layout: fixed; width: 100%;">
   <tr>
+    <td style="width: 100%; text-align: center;"><img src="screenshots/86box_inspect_ascii_shork-486.png" style="width: 1000%;" /></td>
+  </tr>
+  <tr>
+    <td style="width: 100%;">Inspect screen (text file example)</td>
+  </tr>
+</table>
+
+<table style="table-layout: fixed; width: 100%;">
+  <tr>
     <td style="width: 50%; text-align: center;"><img src="screenshots/86box_inspect_executable_shork-486.png" style="width: 100%;" /></td>
     <td style="width: 50%; text-align: center;"><img src="screenshots/86box_inspect_symlink_shork-486.png" style="width: 100%;" /></td>
   </tr>
   <tr>
     <td style="width: 50%;">Inspect screen (executable example)</td>
     <td style="width: 50%;">Inspect screen (symbolic link example)</td>
-  </tr>
-</table>
-
-<table style="table-layout: fixed; width: 100%;">
-  <tr>
-    <td style="width: 100%; text-align: center;"><img src="screenshots/86box_inspect_ascii_shork-486.png" style="width: 50%;" /></td>
-  </tr>
-  <tr>
-    <td style="width: 100%;">Inspect screen (text file example)</td>
   </tr>
 </table>
