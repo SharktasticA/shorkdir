@@ -10,7 +10,7 @@
 ## Kali (links.sharktastica.co.uk)                  ##
 ######################################################
 
-"$PWD/shorkdir-exec" || exit 1
+"$(dirname "$0")/shorkdir-exec" || exit 1
 tmp="/tmp/shorkdir_last_dir.txt"
 if [ -f "$tmp" ]; then
     dir=$(cat $tmp)
