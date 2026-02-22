@@ -71,9 +71,9 @@ When running, you are technically running a bootstrap shell script, required for
 
 <table style="table-layout: fixed; width: 100%;">
   <tr>
-    <td style="width: 50%; text-align: center;"><img src="screenshots/86box_inspect_ascii_shork-486.png" style="width: 50%;" /></td>
+    <td style="width: 100%; text-align: center;"><img src="screenshots/86box_inspect_ascii_shork-486.png" style="width: 50%;" /></td>
   </tr>
   <tr>
-    <td style="width: 50%;">Inspect screen (text file example)</td>
+    <td style="width: 100%;">Inspect screen (text file example)</td>
   </tr>
 </table>
