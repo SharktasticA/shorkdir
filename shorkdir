@@ -1,0 +1,23 @@
+#!/bin/bash
+
+######################################################
+##             SHORK UTILITY - SHORKDIR             ##
+######################################################
+## Bootstrap script for shorkdir                    ##
+######################################################
+## Licence: GNU GENERAL PUBLIC LICENSE Version 3    ##
+######################################################
+## Kali (links.sharktastica.co.uk)                  ##
+######################################################
+
+./shorkdir-exec || exit 1
+tmp="/tmp/shorkdir_last_dir.txt"
+if [[ -f "$tmp" ]]; then
+    dir=$(<"$tmp")
+    rm -f "$tmp"
+
+    if [[ -d "$dir" ]]; then
+        cd "$dir"
+        exec $SHELL
+    fi
+fi

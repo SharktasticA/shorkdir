@@ -4,13 +4,9 @@ A lightweight Linux terminal-based file browser. It is designed to provide simpl
 
 
 
-## Todo
+## Issues
 
-shorkdir is a work-in-progress, and I acknowledge some present shortcomings I intend to address:
-
-* Exiting shorkdir does not land the user in the directory it was last viewing (if different to the start directory).
-* shorkdir cannot do anything meaningful with files. At least for text files, it should identify any common editors installed on the system and provide an option to open the file with one.
-* shorkdir can produce flickering on some hardware/terminal emulations, usually on older/slower hardware. shorkdir should be modified to only redraw what is needed instead of always redrawing everything.
+shorkdir can produce flickering on some hardware/terminal emulations, usually on older/slower hardware. shorkdir will soon be modified to only redraw what is needed instead of always redrawing everything.
 
 
 
@@ -32,7 +28,9 @@ Run `make install` to install to `/usr/bin` (you may need `sudo` if not installi
 
 ## Running
 
-Simply run `shorkdir` to use. Press "?" to get a list of key binds and directory entry type guide.
+Simply run `shorkdir` to use. Press "?" to get a list of key binds and directory entry type guide. 
+
+When running, you are technically running a bootstrap shell script, required for changing the current directory once the program exits. `shorkdir-exec` is binary itself, which can be run directly if changing directory upon exiting is not desired.
 
 
 

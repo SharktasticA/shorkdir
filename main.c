@@ -24,12 +24,6 @@
 
 
 
-static int fileInstalled = 0;
-static struct termios oldTERMIO;
-static int rawModeEnabled = 0;
-
-
-
 enum NavInput 
 {
     CURSOR_DOWN,
@@ -42,6 +36,27 @@ enum NavInput
     QUIT,
     INVALID
 };
+
+typedef struct 
+{
+    char *name;
+    char *payload;
+    int visible;
+} MenuItem;
+
+
+
+static int emacsInstalled = 0;
+static int fileInstalled = 0;
+static int flowControlInstalled = 0;
+static int mgInstalled = 0;
+static int nanoInstalled = 0;
+static int nvimInstalled = 0;
+static struct termios oldTERMIO;
+static int rawModeEnabled = 0;
+static struct winsize termSize;
+static int viInstalled = 0;
+static int vimInstalled = 0;
 
 
 
@@ -166,6 +181,60 @@ struct dirent **getDirContents(char *currPath, int *entryCount)
 }
 
 /**
+ * Gets an integer input from the user.
+ * @param prompt Prompt to give the user 
+ * @param min Minimum allowed input (set to same as max to disable validation)
+ * @param max Maximum allowed input (set to same as min to disable validation)
+ * @param negativeIfInvalid Flags if function should return -1 if invalid input instead of looping
+ * @return User's integer input
+ */
+int getIntInput(char *prompt, int min, int max, int negativeIfInvalid)
+{
+    if (min > max) min = max;
+    if (max < min) max = min;
+
+    int isValid;
+    char buffer[32];
+    int val;
+
+    do
+    {
+        disableRawMode();
+        printf("%s", prompt);
+        if (min != max) printf(" (%d-%d)", min, max);
+        printf(": ");
+
+        if (fgets(buffer, sizeof(buffer), stdin) != NULL)
+        {
+            if (sscanf(buffer, "%d", &val) == 1)
+            {
+                if ((min != max) && (val >= min && val <= max))
+                    isValid = 1;
+                else if (min == max)
+                    isValid = 1;  // validation disabled
+                else
+                    isValid = 0;
+            }
+            else isValid = 0;
+        }
+        else
+        {
+            int c;
+            while ((c = getchar()) != '\n' && c != EOF);
+            isValid = 0;
+        }
+
+        enableRawMode();
+
+        if (!isValid && negativeIfInvalid)
+            return -1;
+
+    } while (!isValid);
+
+    return val;
+}
+
+/**
  * @return The nav input action detected
  */
 enum NavInput getNavInput(void)
@@ -220,35 +289,59 @@ struct winsize getTerminalSize(void)
     return ws;
 }
 
+int isProgramInstalled(const char *prog)
+{
+    char *path = getenv("PATH");
+    if (!path)
+    {
+        char cmd[64];
+        snprintf(cmd, 64, "%s --version > /dev/null 2>&1", prog);
+        return (system(cmd) == 0);
+    }
+
+    char *paths = strdup(path);
+    char *dir = strtok(paths, ":");
+    while (dir)
+    {
+        char fullpath[512];
+        snprintf(fullpath, sizeof(fullpath), "%s/%s", dir, prog);
+        if (access(fullpath, X_OK) == 0)
+        {
+            free(paths);
+            return 1;
+        }
+        dir = strtok(NULL, ":");
+    }
+    free(paths);
+    return 0;
+}
+
 /**
- * @param termSize winsize struct containing the current terminal size
- * @param entryCount Number of entries in current directory
- * @param cursor Current line/row cursor position
+ * @param title Header's text string
+ * @param body Body's text string
  */
-void printDebug(struct winsize termSize, int entryCount, int cursor)
+void printGenericScreen(char *title, char *body)
 {
     clearScreen();
-    printf("Debug\n");
+
+    printf("%s\n", title);
     for (int i = 0; i < termSize.ws_col; i++) printf("-");
 
-    char debug[400];
-    snprintf(debug, 400, "Term cols: %d, term rows: %d, file installed: %d, dir entries: %d, cusor pos: %d", termSize.ws_col, termSize.ws_row, fileInstalled, entryCount, cursor);
-    int lines = formatNewLines(debug, termSize.ws_col);
+    int lines = formatNewLines(body, termSize.ws_col);
     int availHeight = termSize.ws_row - lines - 3;
-    printf("%s\n", debug);
+    printf("%s\n", body);
     for (int i = 1; i < availHeight; i++) printf("\n");
-    
+
     for (int i = 0; i < termSize.ws_col; i++) printf("-");
     awaitInput();
 }
 
 /**
- * @param termSize winsize struct containing the current terminal size
  * @param dirContents Pointer to one or more dirent structs for each file in the current directory
  * @param entryCount Number of entries in current directory
  * @param cursor Current line/row cursor position
  */
-void printDir(struct winsize termSize, struct dirent **dirContents, int entryCount, int cursor)
+void printDir(struct dirent **dirContents, int entryCount, int cursor)
 {
     int availHeight = termSize.ws_row - 4;
 
@@ -307,10 +400,7 @@ void printDir(struct winsize termSize, struct dirent **dirContents, int entryCou
             printf("\n");
 }
 
-/**
- * @param termSize winsize struct containing the current terminal size in columns and rows
- */
-void printFooter(struct winsize termSize)
+void printFooter(void)
 {
     for (int i = 0; i < termSize.ws_col; i++)
         printf("-");
@@ -321,29 +411,9 @@ void printFooter(struct winsize termSize)
 }
 
 /**
- * @param termSize winsize struct containing the current terminal size in columns and rows
- */
-void printHelp(struct winsize termSize)
-{
-    clearScreen();
-    printf("Help\n");
-    for (int i = 0; i < termSize.ws_col; i++) printf("-");
-    
-    char help[400] = "Key binds:\n[H/A/left] up directory [J/S/down] cursor down [K/W/up] cursor up [L/D/right] down directory [i] inspect selected (if file installed) [h] show help [q] quit\n\nEntry types:\n'd' directory 'f' regular file 'b' block device 'c' character device 'l' symbolic link 's' UNIX domain socket '|' named pipe (FIFO) '?' unknown";
-    int lines = formatNewLines(help, termSize.ws_col);
-    int availHeight = termSize.ws_row - lines - 3;
-    printf("%s\n", help);
-    for (int i = 1; i < availHeight; i++) printf("\n");
-    
-    for (int i = 0; i < termSize.ws_col; i++) printf("-");
-    awaitInput();
-}
-
-/**
- * @param termSize winsize struct containing the current terminal size
  * @param currPath Current working directory path
  */
-void printHeader(struct winsize termSize, char *currPath)
+void printHeader(char *currPath)
 {
     size_t dirLen = strlen(currPath);
     if (dirLen <= termSize.ws_col) printf("%s\n", currPath);
@@ -359,10 +429,10 @@ void printHeader(struct winsize termSize, char *currPath)
 }
 
 /**
- * @param termSize winsize struct containing the current terminal size
  * @param currPath Current working directory path
+ * @param entry Directory entry to inspect
  */
-void inspectEntry(struct winsize termSize, char *currPath, struct dirent *entry)
+void inspectEntry(char *currPath, struct dirent *entry)
 {
     char filePath[PATH_MAX + 256];
     if (strcmp(currPath, "/") == 0)
@@ -379,22 +449,92 @@ void inspectEntry(struct winsize termSize, char *currPath, struct dirent *entry)
         if (fgets(buffer, sizeof(buffer), stream) != NULL)
             buffer[strcspn(buffer, "\n")] = '\0';
         pclose(stream);
+        printGenericScreen(filePath, buffer);
     }
-    else return;
-
-    clearScreen();
-    printHeader(termSize, filePath);
-    int lines = formatNewLines(buffer, termSize.ws_col);
-    int availHeight = termSize.ws_row - lines - 3;
-    printf("%s\n", buffer);
-    for (int i = 1; i < availHeight; i++) printf("\n");
-    for (int i = 0; i < termSize.ws_col; i++) printf("-");
-    awaitInput();
 }
 
 void showCursor(void)
 {
     printf("\033[?25h");
+}
+
+/**
+ * @param currPath Current working directory path
+ * @param entry Directory entry to open
+ */
+void openFile(char *currDir, struct dirent *entry)
+{
+    if (!emacsInstalled && !flowControlInstalled && !mgInstalled && !nanoInstalled && !nvimInstalled && !viInstalled && !vimInstalled)
+        return;
+
+    char filePath[PATH_MAX + 256];
+    snprintf(filePath, PATH_MAX + 256, "%s/%s", currDir, entry->d_name);
+
+    MenuItem menu[] = {
+        { "Go back", "", 1 },
+        { "Emacs", "emacs", emacsInstalled },
+        { "Flow Control", "flow", flowControlInstalled },
+        { "Mg", "mg", mgInstalled },
+        { "nano", "nano", nanoInstalled },
+        { "Neovim", "nvim", nvimInstalled },
+        { "vi/Vim", "vi", viInstalled },
+        { "Vim/Neovim", "vim", vimInstalled }
+    };
+    int menuSize = sizeof(menu) / sizeof(menu[0]);
+    int indices[menuSize];
+    int choice;
+
+    for (;;)
+    {
+        clearScreen();
+        printf("Open %s\n", filePath);
+        for (int i = 0; i < termSize.ws_col; i++) printf("-");
+
+        int count = 0;
+
+        for (int i = 0; i < (int)menuSize; i++)
+        {
+            if (menu[i].visible)
+            {
+                printf("%d: %s\n", count + 1, menu[i].name);
+                indices[count++] = i;
+            }
+        }
+
+        int availHeight = termSize.ws_row - count - 3;
+        for (int i = 1; i < availHeight; i++) printf("\n");
+
+        for (int i = 0; i < termSize.ws_col; i++) printf("-");
+        choice = getIntInput("Select editor", 1, count, 1);
+        if (choice != -1) break;
+    }
+
+    if (choice == 1) return;
+
+    showCursor();
+    disableRawMode();
+    char *argv[] = { 
+        menu[indices[choice - 1]].payload,
+        filePath,
+        NULL
+    };
+    execvp(argv[0], argv);
+    perror("ERROR: failed to open editor");
+    exit(1);
+}
+
+/**
+ * @param currPath Current working directory path
+ */
+void writeLastDir(char *currDir)
+{
+    const char *tmpFile = "/tmp/shorkdir_last_dir.txt";
+    FILE *stream = fopen(tmpFile, "w");
+    if (stream)
+    {
+        fprintf(stream, "%s\n", currDir);
+        fclose(stream);
+    }
 }
 
 
@@ -406,9 +546,16 @@ int main(void)
     atexit(showCursor);
     atexit(disableRawMode);
 
-    fileInstalled = (system("file --version > /dev/null 2>&1") == 0);
+    emacsInstalled = isProgramInstalled("emacs");
+    fileInstalled = isProgramInstalled("file");
+    flowControlInstalled = isProgramInstalled("flow");
+    mgInstalled = isProgramInstalled("mg");
+    nanoInstalled = isProgramInstalled("nano");
+    nvimInstalled = isProgramInstalled("nvim");
+    viInstalled = isProgramInstalled("vi");
+    vimInstalled = isProgramInstalled("vim");
 
-    struct winsize termSize = getTerminalSize();
+    termSize = getTerminalSize();
     if (termSize.ws_col < 50 || termSize.ws_row < 16)
     {
         perror("ERROR: terminal size too small (must be 50x16 or more)");
@@ -419,7 +566,7 @@ int main(void)
     size_t currPathLen;
     if (getcwd(currPath, sizeof(currPath)) == NULL)
     {
-        perror("ERROR: getcwd");
+        perror("ERROR: failed to get current path");
         return 1;
     }
 
@@ -454,9 +601,9 @@ int main(void)
         }
 
         printf("\n");
-        printHeader(termSize, currPath);
-        printDir(termSize, dirContents, entryCount, cursor);
-        printFooter(termSize);
+        printHeader(currPath);
+        printDir(dirContents, entryCount, cursor);
+        printFooter();
 
         enum NavInput input = getNavInput();
 
@@ -487,33 +634,40 @@ int main(void)
                 break;
 
             case DEBUG:
-                printDebug(termSize, entryCount, cursor);
+                char debug[400];
+                snprintf(debug, 400, "Term cols: %d, term rows: %d, dir entries: %d, cursor pos: %d, emacs installed: %d, file installed: %d, Flow Control installed: %d, Mg installed: %d, nano installed: %d, Neovim installed: %d, vi/vim installed: %d, Vim/Neovim installed: %d", termSize.ws_col, termSize.ws_row, entryCount, cursor, emacsInstalled, fileInstalled, flowControlInstalled, mgInstalled, nanoInstalled, nvimInstalled, viInstalled, vimInstalled);
+                printGenericScreen("Debug", debug);
                 break;
 
             case DIR_DOWN:
                 if (entryCount > 0)
                 {
-                    if (dirContents[cursor - 1]->d_type != DT_DIR)
-                        break;
-                    size_t entryLen = strlen(dirContents[cursor - 1]->d_name);
-                    if (currPathLen + entryLen + 1 >= PATH_MAX)
-                        break;
-                    if (strcmp(currPath, "/") != 0)
+                    if (dirContents[cursor - 1]->d_type == DT_REG)
+                        openFile(currPath, dirContents[cursor - 1]);
+                    else if (dirContents[cursor - 1]->d_type == DT_DIR)
                     {
-                        currPath[currPathLen] = '/';
-                        strcpy(currPath + currPathLen + 1, dirContents[cursor - 1]->d_name);
+                        size_t entryLen = strlen(dirContents[cursor - 1]->d_name);
+                        if (currPathLen + entryLen + 1 >= PATH_MAX) break;
+
+                        if (strcmp(currPath, "/") != 0)
+                        {
+                            currPath[currPathLen] = '/';
+                            strcpy(currPath + currPathLen + 1, dirContents[cursor - 1]->d_name);
+                        }
+                        else strcpy(currPath + 1, dirContents[cursor - 1]->d_name);  
+
+                        updateDirContents = cursor = 1;
                     }
-                    else strcpy(currPath + 1, dirContents[cursor - 1]->d_name);                
-                    updateDirContents = cursor = 1;
                 }
                 break;
 
             case INSPECT:
-                if (fileInstalled) inspectEntry(termSize, currPath, dirContents[cursor - 1]);
+                if (fileInstalled) inspectEntry(currPath, dirContents[cursor - 1]);
                 break;
 
             case HELP:
-                printHelp(termSize);
+                char help[400] = "Key binds:\n[H/A/left] up directory [J/S/down] cursor down [K/W/up] cursor up [L/D/right] down directory [i] inspect selected (if file installed) [h] show help [q] quit\n\nEntry types:\n'd' directory 'f' regular file 'b' block device 'c' character device 'l' symbolic link 's' UNIX domain socket '|' named pipe (FIFO) '?' unknown";
+                printGenericScreen("Help", help);
                 break;
 
             case QUIT:
@@ -528,6 +682,7 @@ int main(void)
         free(dirContents);
     }
 
-    printf("\n");
-    return 0;   
+    writeLastDir(currPath);
+    clearScreen();
+    return 0;  
 }
