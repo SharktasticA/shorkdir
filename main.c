@@ -465,7 +465,9 @@ void inspectEntry(char *currPath, struct dirent *entry)
         if (fgets(buffer, sizeof(buffer), stream) != NULL)
             buffer[strcspn(buffer, "\n")] = '\0';
         pclose(stream);
-        printGenericScreen(filePath, buffer);
+        char title[PATH_MAX + 266];
+        snprintf(title, PATH_MAX + 266, "Inspect: %s", filePath);
+        printGenericScreen(title, buffer);
     }
 }
 
@@ -503,7 +505,7 @@ void openFile(char *currDir, struct dirent *entry)
     for (;;)
     {
         clearScreen();
-        printf("Open %s\n", filePath);
+        printf("Open: %s\n", filePath);
         for (int i = 0; i < termSize.ws_col; i++) printf("-");
 
         int count = 0;

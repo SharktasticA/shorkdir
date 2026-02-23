@@ -66,11 +66,11 @@ Simply run `shorkdir` to use. When running, you are technically running a bootst
 <table style="table-layout: fixed; width: 100%;">
   <tr>
     <td style="width: 50%; text-align: center;"><img src="screenshots/86box_help_shork-486.png" style="width: 100%;" /></td>
-    <td style="width: 50%; text-align: center;"><img src="screenshots/86box_edit_shork-486.png" style="width: 100%;" /></td>
+    <td style="width: 50%; text-align: center;"><img src="screenshots/86box_open_shork-486.png" style="width: 100%;" /></td>
   </tr>
   <tr>
     <td style="width: 50%;">Help screen</td>
-    <td style="width: 50%;">Select editor screen</td>
+    <td style="width: 50%;">Open screen</td>
   </tr>
 </table>
 
