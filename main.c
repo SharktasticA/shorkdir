@@ -680,7 +680,8 @@ int main(void)
                 break;
 
             case INSPECT:
-                if (fileInstalled) inspectEntry(currPath, dirContents[cursor - 1]);
+                if (fileInstalled && entryCount > 0)
+                    inspectEntry(currPath, dirContents[cursor - 1]);
                 break;
 
             case HELP:
