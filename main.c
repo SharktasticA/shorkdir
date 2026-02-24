@@ -71,9 +71,12 @@ void awaitInput(void)
     getchar();
 }
 
+/**
+ * Moves the cursor to topleft-most position and clears below cursor.
+ */
 void clearScreen(void)
 {
-    printf("\033[2J\033[H");
+    printf("\033[H\033[J");
 }
 
 /**
@@ -618,7 +621,7 @@ int main(void)
             updateDirContents = 0;
         }
 
-        printf("\n");
+        clearScreen();
         printHeader(currPath);
         printDir(dirContents, entryCount, cursor);
         printFooter();
