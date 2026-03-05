@@ -36,6 +36,7 @@ enum NavInput
     HELP,
     INSPECT,
     QUIT,
+    TOGGLE_HIDDEN,
     INVALID
 };
 
@@ -51,6 +52,7 @@ typedef struct
 static int emacsInstalled = 0;
 static int fileInstalled = 0;
 static int flowControlInstalled = 0;
+static int hiddenVisible = 1;
 static int mgInstalled = 0;
 static int nanoInstalled = 0;
 static int nvimInstalled = 0;
@@ -239,6 +241,7 @@ enum NavInput getNavInput(void)
             case 'j': return CURSOR_DOWN;
             case 'k': return CURSOR_UP;
             case 'l': return DIR_DOWN;
+            case '.': return TOGGLE_HIDDEN;
             case '?': return HELP;
         }
     }
@@ -289,7 +292,7 @@ struct dirent **getDirContents(char *currPath, int *entryCount)
 
         while ((entry = readdir(dir)) != NULL)
         {
-            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || (!hiddenVisible && entry->d_name[0] == '.'))
                 continue;
             if (entry->d_type == DT_REG && isFileExecutable(currPath, entry))
                 entry->d_type = DT_EXE;
@@ -423,10 +426,16 @@ void printFooter(void)
 {
     for (int i = 0; i < termSize.ws_col; i++)
         printf("-");
+
+    char *inspectStr = "";
     if (fileInstalled)
-        printf("[hjkl] Navigate  [i] Inspect  [?] Help  [q] Quit ");
-    else
-        printf("[hjkl] Navigate  [?] Help  [q] Quit ");
+        inspectStr = " [i] Inspect";
+
+    char *hiddenStr = " [.] Hidden off";
+    if (!hiddenVisible)
+        hiddenStr = " [.] Hidden on";
+
+    printf("[hjkl] Navigate%s%s [?] Help [q] Quit ", inspectStr, hiddenStr);
 }
 
 /**
@@ -577,9 +586,9 @@ int main(void)
     vimInstalled = isProgramInstalled("vim");
 
     termSize = getTerminalSize();
-    if (termSize.ws_col < 50 || termSize.ws_row < 16)
+    if (termSize.ws_col < 62 || termSize.ws_row < 14)
     {
-        perror("ERROR: terminal size too small (must be 50x16 or more)");
+        perror("ERROR: terminal size too small (must be 62x14 or more)");
         return 1;
     }
 
@@ -686,9 +695,14 @@ int main(void)
                 if (fileInstalled && entryCount > 0)
                     inspectEntry(currPath, dirContents[cursor - 1]);
                 break;
+                
+            case TOGGLE_HIDDEN:
+                hiddenVisible = !hiddenVisible;
+                cursor = updateDirContents = 1;
+                break;
 
             case HELP:
-                char help[400] = "Key binds:\n[H/A/left] up directory [J/S/down] cursor down [K/W/up] cursor up [L/D/right] open directory/file [i] inspect selected (if file installed) [h] show help [q] quit\n\nEntry types:\n'd' directory 'f' regular file 'x' executable file 'b' block device 'c' character device 'l' symbolic link 's' UNIX domain socket '|' named pipe (FIFO) '?' unknown";
+                char help[400] = "Key binds:\n[H/A/left] up directory [J/S/down] cursor down [K/W/up] cursor up [L/D/right] open directory/file [i] inspect selected (if file installed) [.] toggle hidden entires [h] show help [q] quit\n\nEntry types:\n'd' directory 'f' regular file 'x' executable file 'b' block device 'c' character device 'l' symbolic link 's' UNIX domain socket '|' named pipe (FIFO) '?' unknown";
                 printGenericScreen("Help", help);
                 break;
 

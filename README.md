@@ -35,8 +35,8 @@ Simply run `shorkdir` to use. When running, you are technically running a bootst
 <table>
   <tr><th>Key</th><th>Function</th><th>Key</th><th>Function</th><th>Key</th><th>Function</th></tr>
   <tr><td>H/A/left arrow</td><td>Up directory</td><td>J/S/down arrow</td><td>Move cursor down</td><td>K/W/up arrow</td><td>Move cursor up</td></tr>
-  <tr><td>L/D/right arrow</td><td>Open directory/file</td><td>i</td><td>Inspect (if `file` installed)</td><td>h</td><td>Show help screen</td></tr>
-  <tr><td>q</td><td>Quit</td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>L/D/right arrow</td><td>Open directory/file</td><td>i</td><td>Inspect (if `file` installed)</td><td>.</td><td>Toggle hidden directories/files</td></tr>
+  <tr><td>h</td><td>Show help screen</td><td>q</td><td>Quit</td><td></td><td></td></tr>
 </table>
 
 ### Directory entry types
