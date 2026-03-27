@@ -374,9 +374,9 @@ void printDir(struct dirent **dirContents, int entryCount, int cursor)
         return;
     }
 
-    int offset = 0;
-    if (cursor >= availHeight)
-        offset = cursor - availHeight + 1;
+    int offset = (cursor - 1) - (availHeight / 2);
+    if (offset < 0)
+        offset = 0;
     if (offset > entryCount - availHeight)
         offset = entryCount - availHeight;
     if (offset < 0)
