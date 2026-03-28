@@ -24,7 +24,54 @@
 
 
 
+#define COL_RESET               "0"
+#ifdef WITH_COL
+#define COL_BAK_BLACK           "40"
+#define COL_BAK_BLUE            "44"
+#define COL_BAK_CYAN            "46"
+#define COL_BAK_GREEN           "42"
+#define COL_BAK_GREY            "40"
+#define COL_BAK_MAGENTA         "45"
+#define COL_BAK_RED             "41"
+#define COL_BAK_WHITE           "47"
+#define COL_BAK_YELLOW          "43"
+
+#define COL_FOR_BLACK           "0;30"
+#define COL_FOR_BLUE            "0;34"
+#define COL_FOR_BOLD_BLUE       "1;34"
+#define COL_FOR_BOLD_CYAN       "1;36"
+#define COL_FOR_BOLD_GREEN      "1;32"
+#define COL_FOR_BOLD_MAGENTA    "1;35"
+#define COL_FOR_BOLD_RED        "1;31"
+#define COL_FOR_BOLD_WHITE      "1;37"
+#define COL_FOR_BOLD_YELLOW     "1;33"
+#define COL_FOR_CYAN            "0;36"
+#define COL_FOR_GREEN           "0;32"
+#define COL_FOR_GREY            "1;30"
+#define COL_FOR_MAGENTA         "0;35"
+#define COL_FOR_RED             "0;31"
+#define COL_FOR_WHITE           "0;37"
+#define COL_FOR_YELLOW          "0;33"
+
+#define COL_FOR_RESET           "39"
+#define COL_BAK_RESET           "49"
+
+#define COL_FOR_ARROW           COL_FOR_BOLD_RED
+#define COL_FOR_CODE            COL_FOR_BOLD_RED
+#define COL_FOR_CURSOR          COL_FOR_BOLD_CYAN
+#define COL_FOR_HEADING         COL_FOR_BOLD_CYAN
+#define COL_FOR_OL              COL_FOR_GREEN
+#else
+#define COL_FOR_ARROW           COL_RESET
+#define COL_FOR_CODE            COL_RESET
+#define COL_FOR_CURSOR          COL_RESET
+#define COL_FOR_HEADING         COL_RESET
+#define COL_FOR_OL              COL_RESET
+#endif
+
 #define DT_EXE 16
+
+
 
 enum NavInput 
 {
@@ -69,7 +116,10 @@ static int VIM_INSTALLED = 0;
  */
 void awaitInput(void)
 {
-    printf("Press any key to continue... ");
+    int len = printf("Press any key to continue... ");
+#ifdef WITH_COL
+    for (size_t i = len; i < TERM_SIZE.ws_col; i++) printf(" ");
+#endif
     getchar();
 }
 
@@ -121,30 +171,52 @@ void enableRawMode(void)
  * Adds new lines to a given string based on the requested line width.
  * @param buffer Input string
  * @param width Characters per line
+ * @param indent Indent to include after newly inserted new line
  * @return Number of lines in the string
  */
-int formatNewLines(char *buffer, int width)
+int formatNewLines(char *buffer, int width, char *indent)
 {
     if (!buffer || width < 1) return 0;
 
     size_t bufferStrLen = strlen(buffer);
+    size_t indentLen = indent ? strlen(indent) : 0;
     int lines = 1;
     int lastSpace = -1;
     int widthCount = 1;
+
     for (int i = 0; i < bufferStrLen; i++)
     {
+        if (buffer[i] == '\033')
+        {
+            while (i < bufferStrLen && buffer[i] != 'm') i++;
+            if (i >= bufferStrLen) break;
+            continue; 
+        }
+        
         if (buffer[i] == ' ') lastSpace = i;
         else if (buffer[i] == '\n')
         {
             lines++;
             widthCount = 0;
+            continue;
         }
 
         if (widthCount == width)
         {
-            if (lastSpace != -1) buffer[lastSpace] = '\n';
+            if (lastSpace != -1)
+            {
+                buffer[lastSpace] = '\n';
+                lines++;
+
+                if (indent && indentLen > 0)
+                {
+                    memmove(buffer + lastSpace + 1 + indentLen, buffer + lastSpace + 1, bufferStrLen - lastSpace);
+                    memcpy(buffer + lastSpace + 1, indent, indentLen);
+                    bufferStrLen += indentLen;
+                    if (lastSpace <= i) i += indentLen;
+                }
+            }
             widthCount = i - lastSpace;
-            lines++;
         }
 
         widthCount++;
@@ -173,6 +245,13 @@ int getIntInput(char *prompt, int min, int max, int negativeIfInvalid)
     do
     {
         disableRawMode();
+
+#ifdef WITH_COL
+        printf("\033[%s;%sm", COL_FOR_BOLD_WHITE, COL_BAK_BLUE);
+        for (int i = 0; i < TERM_SIZE.ws_col; i++) printf(" ");
+        printf("\033[1G");
+#endif
+
         printf("%s", prompt);
         if (min != max) printf(" (%d-%d)", min, max);
         printf(": ");
@@ -184,7 +263,7 @@ int getIntInput(char *prompt, int min, int max, int negativeIfInvalid)
                 if ((min != max) && (val >= min && val <= max))
                     isValid = 1;
                 else if (min == max)
-                    isValid = 1;  // validation disabled
+                    isValid = 1;
                 else
                     isValid = 0;
             }
@@ -203,6 +282,10 @@ int getIntInput(char *prompt, int min, int max, int negativeIfInvalid)
             return -1;
 
     } while (!isValid);
+
+#ifdef WITH_COL
+    printf("\033[%sm", COL_RESET);
+#endif
 
     return val;
 }
@@ -345,16 +428,36 @@ void printGenericScreen(char *title, char *body)
 {
     clearScreen();
 
+#ifdef WITH_COL
+    printf("\033[%s;%sm", COL_FOR_BOLD_WHITE, COL_BAK_BLUE);
+    int len = printf("%s", title);
+    for (size_t i = len; i < TERM_SIZE.ws_col; i++) printf(" ");
+    printf("\033[%sm", COL_RESET);
+#else
     printf("%s\n", title);
     for (int i = 0; i < TERM_SIZE.ws_col; i++) printf("-");
+#endif
 
-    int lines = formatNewLines(body, TERM_SIZE.ws_col);
+    int lines = formatNewLines(body, TERM_SIZE.ws_col, NULL);
+
+#ifdef WITH_COL
+    int availHeight = TERM_SIZE.ws_row - lines - 1;
+#else
     int availHeight = TERM_SIZE.ws_row - lines - 3;
+#endif
+
     printf("%s\n", body);
     for (int i = 1; i < availHeight; i++) printf("\n");
 
+#ifdef WITH_COL
+    printf("\033[%s;%sm", COL_FOR_BOLD_WHITE, COL_BAK_BLUE);
+    awaitInput();
+    printf("\033[%sm", COL_RESET);
+#else
     for (int i = 0; i < TERM_SIZE.ws_col; i++) printf("-");
     awaitInput();
+#endif
+
 }
 
 /**
@@ -364,7 +467,11 @@ void printGenericScreen(char *title, char *body)
  */
 void printDir(struct dirent **dirContents, int entryCount, int cursor)
 {
+#ifdef WITH_COL
+    int availHeight = TERM_SIZE.ws_row - 2;
+#else
     int availHeight = TERM_SIZE.ws_row - 4;
+#endif
 
     if (!dirContents || entryCount == 0)
     {
@@ -406,11 +513,11 @@ void printDir(struct dirent **dirContents, int entryCount, int cursor)
         }
 
         if (canGoUp && i == offset)
-            printf("^\n");
+            printf("\033[%sm^\033[%sm\n", COL_FOR_ARROW, COL_RESET);
         else if (canGoDown && i == offset + availHeight - 1)
-            printf("v\n");
+            printf("\033[%smv\033[%sm\n", COL_FOR_ARROW, COL_RESET);
         else if (i == cursor - 1)
-            printf("[*] %c %s\n", prefix, dirContents[i]->d_name);
+            printf("[\033[%sm*\033[%sm] %c %s\n", COL_FOR_CURSOR, COL_RESET, prefix, dirContents[i]->d_name);
         else
             printf("[ ] %c %s\n", prefix, dirContents[i]->d_name);
 
@@ -424,8 +531,11 @@ void printDir(struct dirent **dirContents, int entryCount, int cursor)
 
 void printFooter(void)
 {
-    for (int i = 0; i < TERM_SIZE.ws_col; i++)
-        printf("-");
+#ifdef WITH_COL
+    printf("\033[%s;%sm", COL_FOR_BOLD_WHITE, COL_BAK_BLUE);
+#else
+    for (int i = 0; i < TERM_SIZE.ws_col; i++) printf("-");
+#endif
 
     char *inspectStr = "";
     if (FILE_INSTALLED)
@@ -435,7 +545,12 @@ void printFooter(void)
     if (!DOTFILES_VISIBLE)
         hiddenStr = " [.] Hidden on";
 
-    printf("[hjkl] Navigate%s%s [?] Help [q] Quit ", inspectStr, hiddenStr);
+    int len = printf("[hjkl] Navigate%s%s [?] Help [q] Quit ", inspectStr, hiddenStr);
+
+#ifdef WITH_COL
+    for (int i = len; i < TERM_SIZE.ws_col; i++) printf(" ");
+    printf("\033[%sm", COL_RESET);
+#endif
 }
 
 /**
@@ -443,17 +558,32 @@ void printFooter(void)
  */
 void printHeader(char *currPath)
 {
+#ifdef WITH_COL
+    printf("\033[%s;%sm", COL_FOR_BOLD_WHITE, COL_BAK_BLUE);
+#endif
+
     size_t dirLen = strlen(currPath);
-    if (dirLen <= TERM_SIZE.ws_col) printf("%s\n", currPath);
+    if (dirLen <= TERM_SIZE.ws_col) 
+    {
+        printf("%s", currPath);
+#ifdef WITH_COL
+        for (size_t i = dirLen; i < TERM_SIZE.ws_col; i++)
+            printf(" ");
+#endif
+        printf("\n");
+    }
     else
     {
         size_t visibleLen = TERM_SIZE.ws_col - 3;
         char *start = currPath + (dirLen - visibleLen);
         printf("...%s\n", start);
     }
-    
-    for (int i = 0; i < TERM_SIZE.ws_col; i++)
-        printf("-");
+
+#ifdef WITH_COL
+    printf("\033[%sm", COL_RESET);
+#else
+    for (int i = 0; i < TERM_SIZE.ws_col; i++) printf("-");
+#endif
 }
 
 /**
@@ -486,6 +616,9 @@ void inspectEntry(char *currPath, struct dirent *entry)
 void showCursor(void)
 {
     printf("\033[?25h");
+#ifdef WITH_COL
+    printf("\033[%sm", COL_RESET);
+#endif
 }
 
 /**
@@ -517,8 +650,16 @@ void openFile(char *currDir, struct dirent *entry)
     for (;;)
     {
         clearScreen();
+
+#ifdef WITH_COL
+        printf("\033[%s;%sm", COL_FOR_BOLD_WHITE, COL_BAK_BLUE);
+        int len = printf("Open: %s", filePath);
+        for (size_t i = len; i < TERM_SIZE.ws_col; i++) printf(" ");
+        printf("\033[%sm\n", COL_RESET);
+#else
         printf("Open: %s\n", filePath);
         for (int i = 0; i < TERM_SIZE.ws_col; i++) printf("-");
+#endif
 
         int count = 0;
 
@@ -526,16 +667,23 @@ void openFile(char *currDir, struct dirent *entry)
         {
             if (menu[i].visible)
             {
-                printf("%d: %s\n", count + 1, menu[i].name);
+                printf("\033[%sm%d:\033[%sm %s\n", COL_FOR_OL, count + 1, COL_RESET, menu[i].name);
                 indices[count++] = i;
             }
         }
 
+#ifdef WITH_COL
+        int availHeight = TERM_SIZE.ws_row - count - 1;
+        for (int i = 1; i < availHeight; i++) printf("\n");
+        printf("\033[%s;%sm", COL_FOR_BOLD_WHITE, COL_BAK_BLUE);
+        choice = getIntInput("Select option", 1, count, 1);
+#else
         int availHeight = TERM_SIZE.ws_row - count - 3;
         for (int i = 1; i < availHeight; i++) printf("\n");
-
         for (int i = 0; i < TERM_SIZE.ws_col; i++) printf("-");
-        choice = getIntInput("Select editor", 1, count, 1);
+        choice = getIntInput("Select option", 1, count, 1);
+#endif
+
         if (choice != -1) break;
     }
 
@@ -609,6 +757,11 @@ int main(void)
     int cursor = 1;
     int updateDirContents = 1;
 
+    char debugScreen[400] = "Term cols: %d, term rows: %d, dir entries: %d, cursor pos: %d, emacs installed: %d, file installed: %d, Flow Control installed: %d, Mg installed: %d, nano installed: %d, Neovim installed: %d, vi/vim installed: %d, Vim/Neovim installed: %d";
+
+    char helpScreen[700];
+    snprintf(helpScreen, 700, "\033[%smKey binds\033[%sm\n\033[%sm[H/A/left]\033[%sm up directory \033[%sm[J/S/down]\033[%sm cursor down \033[%sm[K/W/up]\033[%sm cursor up \033[%sm[L/D/right]\033[%sm open directory/file \033[%sm[i]\033[%sm inspect selected (if file installed) \033[%sm[.]\033[%sm toggle hidden entires \033[%sm[h]\033[%sm show help \033[%sm[q]\033[%sm quit\n\n\033[%smEntry types\033[%sm\n\033[%sm'd'\033[%sm directory \033[%sm'f'\033[%sm regular file \033[%sm'x'\033[%sm executable file \033[%sm'b'\033[%sm block device \033[%sm'c'\033[%sm character device \033[%sm'l'\033[%sm symbolic link \033[%sm's'\033[%sm UNIX domain socket \033[%sm'|'\033[%sm named pipe (FIFO) \033[%sm'?'\033[%sm unknown", COL_FOR_HEADING, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_HEADING, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET);
+
     while (running)
     {
         if (updateDirContents)
@@ -664,9 +817,9 @@ int main(void)
                 break;
 
             case DEBUG:
-                char debug[400];
-                snprintf(debug, 400, "Term cols: %d, term rows: %d, dir entries: %d, cursor pos: %d, emacs installed: %d, file installed: %d, Flow Control installed: %d, Mg installed: %d, nano installed: %d, Neovim installed: %d, vi/vim installed: %d, Vim/Neovim installed: %d", TERM_SIZE.ws_col, TERM_SIZE.ws_row, entryCount, cursor, EMACS_INSTALLED, FILE_INSTALLED, FLOW_CTRL_INSTALLED, MG_INSTALLED, NANO_INSTALLED, NVIM_INSTALLED, VI_INSTALLED, VIM_INSTALLED);
-                printGenericScreen("Debug", debug);
+                char debugMsgProcessed[400];
+                snprintf(debugMsgProcessed, 400, debugScreen, TERM_SIZE.ws_col, TERM_SIZE.ws_row, entryCount, cursor, EMACS_INSTALLED, FILE_INSTALLED, FLOW_CTRL_INSTALLED, MG_INSTALLED, NANO_INSTALLED, NVIM_INSTALLED, VI_INSTALLED, VIM_INSTALLED);
+                printGenericScreen("Debug", debugMsgProcessed);
                 break;
 
             case DIR_DOWN:
@@ -702,8 +855,7 @@ int main(void)
                 break;
 
             case HELP:
-                char help[400] = "Key binds:\n[H/A/left] up directory [J/S/down] cursor down [K/W/up] cursor up [L/D/right] open directory/file [i] inspect selected (if file installed) [.] toggle hidden entires [h] show help [q] quit\n\nEntry types:\n'd' directory 'f' regular file 'x' executable file 'b' block device 'c' character device 'l' symbolic link 's' UNIX domain socket '|' named pipe (FIFO) '?' unknown";
-                printGenericScreen("Help", help);
+                printGenericScreen("Help", helpScreen);
                 break;
 
             case QUIT:
