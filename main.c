@@ -49,18 +49,18 @@ typedef struct
 
 
 
-static int emacsInstalled = 0;
-static int fileInstalled = 0;
-static int flowControlInstalled = 0;
-static int hiddenVisible = 1;
-static int mgInstalled = 0;
-static int nanoInstalled = 0;
-static int nvimInstalled = 0;
-static struct termios oldTERMIO;
-static int rawModeEnabled = 0;
-static struct winsize termSize;
-static int viInstalled = 0;
-static int vimInstalled = 0;
+static int DOTFILES_VISIBLE = 1;
+static int EMACS_INSTALLED = 0;
+static int FILE_INSTALLED = 0;
+static int FLOW_CTRL_INSTALLED = 0;
+static int MG_INSTALLED = 0;
+static int NANO_INSTALLED = 0;
+static int NVIM_INSTALLED = 0;
+static struct termios OLD_TERMIOS;
+static int RAW_MODE_ENABLED = 0;
+static struct winsize TERM_SIZE;
+static int VI_INSTALLED = 0;
+static int VIM_INSTALLED = 0;
 
 
 
@@ -99,8 +99,8 @@ int compareDirName(const void *a, const void *b)
  */
 void disableRawMode(void)
 {
-    if (rawModeEnabled)
-        tcsetattr(STDIN_FILENO, TCSANOW, &oldTERMIO);
+    if (RAW_MODE_ENABLED)
+        tcsetattr(STDIN_FILENO, TCSANOW, &OLD_TERMIOS);
 }
 
 /**
@@ -110,11 +110,11 @@ void disableRawMode(void)
 void enableRawMode(void)
 {
     struct termios newTERMIO;
-    tcgetattr(STDIN_FILENO, &oldTERMIO);
-    newTERMIO = oldTERMIO;
+    tcgetattr(STDIN_FILENO, &OLD_TERMIOS);
+    newTERMIO = OLD_TERMIOS;
     newTERMIO.c_lflag &= ~(ICANON | ECHO);
     tcsetattr(STDIN_FILENO, TCSANOW, &newTERMIO);
-    rawModeEnabled = 1;
+    RAW_MODE_ENABLED = 1;
 }
 
 /**
@@ -292,7 +292,7 @@ struct dirent **getDirContents(char *currPath, int *entryCount)
 
         while ((entry = readdir(dir)) != NULL)
         {
-            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || (!hiddenVisible && entry->d_name[0] == '.'))
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || (!DOTFILES_VISIBLE && entry->d_name[0] == '.'))
                 continue;
             if (entry->d_type == DT_REG && isFileExecutable(currPath, entry))
                 entry->d_type = DT_EXE;
@@ -346,14 +346,14 @@ void printGenericScreen(char *title, char *body)
     clearScreen();
 
     printf("%s\n", title);
-    for (int i = 0; i < termSize.ws_col; i++) printf("-");
+    for (int i = 0; i < TERM_SIZE.ws_col; i++) printf("-");
 
-    int lines = formatNewLines(body, termSize.ws_col);
-    int availHeight = termSize.ws_row - lines - 3;
+    int lines = formatNewLines(body, TERM_SIZE.ws_col);
+    int availHeight = TERM_SIZE.ws_row - lines - 3;
     printf("%s\n", body);
     for (int i = 1; i < availHeight; i++) printf("\n");
 
-    for (int i = 0; i < termSize.ws_col; i++) printf("-");
+    for (int i = 0; i < TERM_SIZE.ws_col; i++) printf("-");
     awaitInput();
 }
 
@@ -364,7 +364,7 @@ void printGenericScreen(char *title, char *body)
  */
 void printDir(struct dirent **dirContents, int entryCount, int cursor)
 {
-    int availHeight = termSize.ws_row - 4;
+    int availHeight = TERM_SIZE.ws_row - 4;
 
     if (!dirContents || entryCount == 0)
     {
@@ -424,15 +424,15 @@ void printDir(struct dirent **dirContents, int entryCount, int cursor)
 
 void printFooter(void)
 {
-    for (int i = 0; i < termSize.ws_col; i++)
+    for (int i = 0; i < TERM_SIZE.ws_col; i++)
         printf("-");
 
     char *inspectStr = "";
-    if (fileInstalled)
+    if (FILE_INSTALLED)
         inspectStr = " [i] Inspect";
 
     char *hiddenStr = " [.] Hidden off";
-    if (!hiddenVisible)
+    if (!DOTFILES_VISIBLE)
         hiddenStr = " [.] Hidden on";
 
     printf("[hjkl] Navigate%s%s [?] Help [q] Quit ", inspectStr, hiddenStr);
@@ -444,15 +444,15 @@ void printFooter(void)
 void printHeader(char *currPath)
 {
     size_t dirLen = strlen(currPath);
-    if (dirLen <= termSize.ws_col) printf("%s\n", currPath);
+    if (dirLen <= TERM_SIZE.ws_col) printf("%s\n", currPath);
     else
     {
-        size_t visibleLen = termSize.ws_col - 3;
+        size_t visibleLen = TERM_SIZE.ws_col - 3;
         char *start = currPath + (dirLen - visibleLen);
         printf("...%s\n", start);
     }
     
-    for (int i = 0; i < termSize.ws_col; i++)
+    for (int i = 0; i < TERM_SIZE.ws_col; i++)
         printf("-");
 }
 
@@ -494,7 +494,7 @@ void showCursor(void)
  */
 void openFile(char *currDir, struct dirent *entry)
 {
-    if (!emacsInstalled && !flowControlInstalled && !mgInstalled && !nanoInstalled && !nvimInstalled && !viInstalled && !vimInstalled)
+    if (!EMACS_INSTALLED && !FLOW_CTRL_INSTALLED && !MG_INSTALLED && !NANO_INSTALLED && !NVIM_INSTALLED && !VI_INSTALLED && !VIM_INSTALLED)
         return;
 
     char filePath[PATH_MAX + 256];
@@ -502,13 +502,13 @@ void openFile(char *currDir, struct dirent *entry)
 
     MenuItem menu[] = {
         { "Go back", "", 1 },
-        { "Emacs", "emacs", emacsInstalled },
-        { "Flow Control", "flow", flowControlInstalled },
-        { "Mg", "mg", mgInstalled },
-        { "nano", "nano", nanoInstalled },
-        { "Neovim", "nvim", nvimInstalled },
-        { "vi/Vim", "vi", viInstalled },
-        { "Vim/Neovim", "vim", vimInstalled }
+        { "Emacs", "emacs", EMACS_INSTALLED },
+        { "Flow Control", "flow", FLOW_CTRL_INSTALLED },
+        { "Mg", "mg", MG_INSTALLED },
+        { "nano", "nano", NANO_INSTALLED },
+        { "Neovim", "nvim", NVIM_INSTALLED },
+        { "vi/Vim", "vi", VI_INSTALLED },
+        { "Vim/Neovim", "vim", VIM_INSTALLED }
     };
     int menuSize = sizeof(menu) / sizeof(menu[0]);
     int indices[menuSize];
@@ -518,7 +518,7 @@ void openFile(char *currDir, struct dirent *entry)
     {
         clearScreen();
         printf("Open: %s\n", filePath);
-        for (int i = 0; i < termSize.ws_col; i++) printf("-");
+        for (int i = 0; i < TERM_SIZE.ws_col; i++) printf("-");
 
         int count = 0;
 
@@ -531,10 +531,10 @@ void openFile(char *currDir, struct dirent *entry)
             }
         }
 
-        int availHeight = termSize.ws_row - count - 3;
+        int availHeight = TERM_SIZE.ws_row - count - 3;
         for (int i = 1; i < availHeight; i++) printf("\n");
 
-        for (int i = 0; i < termSize.ws_col; i++) printf("-");
+        for (int i = 0; i < TERM_SIZE.ws_col; i++) printf("-");
         choice = getIntInput("Select editor", 1, count, 1);
         if (choice != -1) break;
     }
@@ -576,21 +576,21 @@ int main(void)
     atexit(showCursor);
     atexit(disableRawMode);
 
-    emacsInstalled = isProgramInstalled("emacs");
-    fileInstalled = isProgramInstalled("file");
-    flowControlInstalled = isProgramInstalled("flow");
-    mgInstalled = isProgramInstalled("mg");
-    nanoInstalled = isProgramInstalled("nano");
-    nvimInstalled = isProgramInstalled("nvim");
-    viInstalled = isProgramInstalled("vi");
-    vimInstalled = isProgramInstalled("vim");
-
-    termSize = getTerminalSize();
-    if (termSize.ws_col < 62 || termSize.ws_row < 14)
+    TERM_SIZE = getTerminalSize();
+    if (TERM_SIZE.ws_col < 62 || TERM_SIZE.ws_row < 14)
     {
         perror("ERROR: terminal size too small (must be 62x14 or more)");
         return 1;
     }
+
+    EMACS_INSTALLED = isProgramInstalled("emacs");
+    FILE_INSTALLED = isProgramInstalled("file");
+    FLOW_CTRL_INSTALLED = isProgramInstalled("flow");
+    MG_INSTALLED = isProgramInstalled("mg");
+    NANO_INSTALLED = isProgramInstalled("nano");
+    NVIM_INSTALLED = isProgramInstalled("nvim");
+    VI_INSTALLED = isProgramInstalled("vi");
+    VIM_INSTALLED = isProgramInstalled("vim");
 
     char currPath[PATH_MAX];
     size_t currPathLen;
@@ -665,7 +665,7 @@ int main(void)
 
             case DEBUG:
                 char debug[400];
-                snprintf(debug, 400, "Term cols: %d, term rows: %d, dir entries: %d, cursor pos: %d, emacs installed: %d, file installed: %d, Flow Control installed: %d, Mg installed: %d, nano installed: %d, Neovim installed: %d, vi/vim installed: %d, Vim/Neovim installed: %d", termSize.ws_col, termSize.ws_row, entryCount, cursor, emacsInstalled, fileInstalled, flowControlInstalled, mgInstalled, nanoInstalled, nvimInstalled, viInstalled, vimInstalled);
+                snprintf(debug, 400, "Term cols: %d, term rows: %d, dir entries: %d, cursor pos: %d, emacs installed: %d, file installed: %d, Flow Control installed: %d, Mg installed: %d, nano installed: %d, Neovim installed: %d, vi/vim installed: %d, Vim/Neovim installed: %d", TERM_SIZE.ws_col, TERM_SIZE.ws_row, entryCount, cursor, EMACS_INSTALLED, FILE_INSTALLED, FLOW_CTRL_INSTALLED, MG_INSTALLED, NANO_INSTALLED, NVIM_INSTALLED, VI_INSTALLED, VIM_INSTALLED);
                 printGenericScreen("Debug", debug);
                 break;
 
@@ -692,12 +692,12 @@ int main(void)
                 break;
 
             case INSPECT:
-                if (fileInstalled && entryCount > 0)
+                if (FILE_INSTALLED && entryCount > 0)
                     inspectEntry(currPath, dirContents[cursor - 1]);
                 break;
                 
             case TOGGLE_HIDDEN:
-                hiddenVisible = !hiddenVisible;
+                DOTFILES_VISIBLE = !DOTFILES_VISIBLE;
                 cursor = updateDirContents = 1;
                 break;
 
