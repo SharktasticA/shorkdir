@@ -468,33 +468,69 @@ void printGenericScreen(char *title, char *body)
 }
 
 /**
+ * Prints the directory listing.
  * @param dirContents Pointer to one or more dirent structs for each file in the current directory
  * @param entryCount Number of entries in current directory
- * @param cursor Current line/row cursor position
+ * @param cursor Current line cursor position
+ * @param cursorPrev Previous line cursor position
  */
-void printDir(struct dirent **dirContents, int entryCount, int cursor)
+void printDir(struct dirent **dirContents, int entryCount, int cursor, int cursorPrev)
 {
 #ifdef WITH_COL
+    int baseRow = 2;
     int availHeight = TERM_SIZE.ws_row - 2;
 #else
+    int baseRow = 3;
     int availHeight = TERM_SIZE.ws_row - 4;
 #endif
 
+    // If directory is empty
     if (!dirContents || entryCount == 0)
     {
         printf("(empty)\n");
-        for (int i = 1; i < availHeight; i++)
-            printf("\n");
+        for (int i = 1; i < availHeight; i++) printf("\n");
         return;
     }
 
+    // Viewport offset and clamping for current line cursor
     int offset = (cursor - 1) - (availHeight / 2);
-    if (offset < 0)
-        offset = 0;
-    if (offset > entryCount - availHeight)
-        offset = entryCount - availHeight;
-    if (offset < 0)
-        offset = 0;
+    if (offset < 0) offset = 0;
+    if (offset > entryCount - availHeight) offset = entryCount - availHeight;
+    if (offset < 0) offset = 0;
+
+    // Viewport offset and clamping for previous line cursor
+    int prevOffset = (cursorPrev - 1) - (availHeight / 2);
+    if (prevOffset < 0) prevOffset = 0;
+    if (prevOffset > entryCount - availHeight) prevOffset = entryCount - availHeight;
+    if (prevOffset < 0) prevOffset = 0;
+
+    int inScrolling = (prevOffset != offset);
+
+    // cursorPrev is initialised as 0 to indicate first frame should be drawn
+    if (cursorPrev == 0) inScrolling = 1;
+
+    int prevIndex = cursorPrev - 1;
+    int currIndex = cursor - 1;
+
+    // If we don't need to scroll, just update the cursor
+    if (!inScrolling)
+    {
+        int rowPrev = baseRow + (prevIndex - offset);
+        int rowCurr = baseRow + (currIndex - offset);
+
+        // Remove old line cursor
+        printf("\x1b[%d;1H[ ]", rowPrev);
+
+        // Print new line cursor
+        printf("\x1b[%d;1H[\033[%sm*\033[%sm]", rowCurr, COL_FOR_CURSOR, COL_RESET);
+
+        // DEBUG
+        printf("\x1b[1;%dH1", TERM_SIZE.ws_col);
+        return;
+    }
+
+    // DEBUG
+    printf("\x1b[1;%dH0", TERM_SIZE.ws_col);
 
     int canGoUp = offset > 0;
     int canGoDown = (offset + availHeight) < entryCount;
@@ -507,32 +543,34 @@ void printDir(struct dirent **dirContents, int entryCount, int cursor)
         char prefix = '?';
         switch (dirContents[i]->d_type)
         {
-            case DT_DIR:    prefix = 'd'; break;
-            case DT_REG:    prefix = 'f'; break;
-            case DT_EXE:    prefix = 'x'; break;
-            case DT_LNK:    prefix = 'l'; break;
-            case DT_FIFO:   prefix = '|'; break;
-            case DT_CHR:    prefix = 'c'; break;
-            case DT_BLK:    prefix = 'b'; break;
-            case DT_SOCK:   prefix = 's'; break;
-            case DT_UNKNOWN:
-            default:
-                prefix = '?';
-                break;
+            case DT_DIR: prefix = 'd'; break;
+            case DT_REG: prefix = 'f'; break;
+            case DT_EXE: prefix = 'x'; break;
+            case DT_LNK: prefix = 'l'; break;
+            case DT_FIFO: prefix = '|'; break;
+            case DT_CHR: prefix = 'c'; break;
+            case DT_BLK: prefix = 'b'; break;
+            case DT_SOCK: prefix = 's'; break;
+            default: prefix = '?'; break;
         }
 
+        // Can scroll up indicator
         if (canGoUp && i == offset)
-            printf("\033[%sm^\033[%sm\n", COL_FOR_ARROW, COL_RESET);
+            printf("\033[%sm^\033[%sm\x1b[K\n", COL_FOR_ARROW, COL_RESET);
+        // Can scroll down indicator
         else if (canGoDown && i == offset + availHeight - 1)
             printf("\033[%smv\033[%sm\n", COL_FOR_ARROW, COL_RESET);
-        else if (i == cursor - 1)
+        // Selected line
+        else if (i == currIndex)
             printf("[\033[%sm*\033[%sm] %c %s\n", COL_FOR_CURSOR, COL_RESET, prefix, dirContents[i]->d_name);
+        // Other lines
         else
             printf("[ ] %c %s\n", prefix, dirContents[i]->d_name);
 
         linesPrinted++;
     }
 
+    // "Fill in" lines if listing is shorter than viewport
     if (!canGoUp && !canGoDown)
         for (int i = linesPrinted; i < availHeight; i++)
             printf("\n");
@@ -800,6 +838,7 @@ int main(void)
     struct dirent **dirContents = NULL;
     int entryCount = 0;
     int cursor = 1;
+    int cursorPrev = 0;
     int updateDirContents = 1;
     int fullRedraw = 1;
 
@@ -833,7 +872,7 @@ int main(void)
         {
             clearScreen();
             printHeader(currPath);
-            printDir(dirContents, entryCount, cursor);
+            printDir(dirContents, entryCount, cursor, cursorPrev);
             printFooter();
         }
         else
@@ -843,21 +882,24 @@ int main(void)
 #else
             printf("\x1b[3;1H");
 #endif
-            printDir(dirContents, entryCount, cursor);
+            printDir(dirContents, entryCount, cursor, cursorPrev);
         }
 
         enum NavInput input = getNavInput();
 
         fullRedraw = 1;
+        cursorPrev = 0;
         switch (input)
         {
             case CURSOR_UP:
+                cursorPrev = cursor;
                 cursor--;
                 if (cursor < 1) cursor = entryCount;
                 fullRedraw = 0;
                 break;
 
             case CURSOR_DOWN:
+                cursorPrev = cursor;
                 cursor++;
                 if (cursor > entryCount) cursor = 1;
                 fullRedraw = 0;
