@@ -96,18 +96,25 @@ typedef struct
 
 
 
+static int CODE_INSTALLED = 0;
 static int DOTFILES_VISIBLE = 1;
 static int EMACS_INSTALLED = 0;
 static int FILE_INSTALLED = 0;
 static int FLOW_CTRL_INSTALLED = 0;
+static int GEDIT_INSTALLED = 0;
+static int GTED_INSTALLED = 0;
+static int KATE_INSTALLED = 0;
 static int MG_INSTALLED = 0;
+static int MOUSEPAD_INSTALLED = 0;
 static int NANO_INSTALLED = 0;
 static int NVIM_INSTALLED = 0;
 static struct termios OLD_TERMIOS;
+static int PLUMA_INSTALLED = 0;
 static int RAW_MODE_ENABLED = 0;
 static struct winsize TERM_SIZE;
 static int VI_INSTALLED = 0;
 static int VIM_INSTALLED = 0;
+static int XED_INSTALLED = 0;
 
 
 
@@ -496,7 +503,7 @@ void printDir(struct dirent **dirContents, int entryCount, int cursor)
     for (int i = offset; i < entryCount && i < offset + availHeight; i++)
     {
         printf("\x1b[K");
-        
+
         char prefix = '?';
         switch (dirContents[i]->d_type)
         {
@@ -629,7 +636,20 @@ void showCursor(void)
  */
 void openFile(char *currDir, struct dirent *entry)
 {
-    if (!EMACS_INSTALLED && !FLOW_CTRL_INSTALLED && !MG_INSTALLED && !NANO_INSTALLED && !NVIM_INSTALLED && !VI_INSTALLED && !VIM_INSTALLED)
+    if (!CODE_INSTALLED &&
+        !EMACS_INSTALLED &&
+        !FLOW_CTRL_INSTALLED &&
+        !GEDIT_INSTALLED &&
+        !GTED_INSTALLED &&
+        !KATE_INSTALLED &&
+        !MG_INSTALLED &&
+        !MOUSEPAD_INSTALLED &&
+        !NANO_INSTALLED &&
+        !NVIM_INSTALLED &&
+        !PLUMA_INSTALLED &&
+        !VI_INSTALLED &&
+        !VIM_INSTALLED &&
+        !XED_INSTALLED)
         return;
 
     char filePath[PATH_MAX + 256];
@@ -639,11 +659,18 @@ void openFile(char *currDir, struct dirent *entry)
         { "Go back", "", 1 },
         { "Emacs", "emacs", EMACS_INSTALLED },
         { "Flow Control", "flow", FLOW_CTRL_INSTALLED },
+        { "gedit", "gedit", GEDIT_INSTALLED },
+        { "GNOME Text Editor", "gnome-text-editor", GTED_INSTALLED },
+        { "Kate", "kate", KATE_INSTALLED },
         { "Mg", "mg", MG_INSTALLED },
+        { "Mousepad", "mousepad", MOUSEPAD_INSTALLED },
         { "nano", "nano", NANO_INSTALLED },
         { "Neovim", "nvim", NVIM_INSTALLED },
+        { "Pluma", "pluma", PLUMA_INSTALLED },
         { "vi/Vim", "vi", VI_INSTALLED },
-        { "Vim/Neovim", "vim", VIM_INSTALLED }
+        { "Vim/Neovim", "vim", VIM_INSTALLED },
+        { "VS Code", "code", CODE_INSTALLED },
+        { "Xed", "xed", XED_INSTALLED }
     };
     int menuSize = sizeof(menu) / sizeof(menu[0]);
     int indices[menuSize];
@@ -733,14 +760,21 @@ int main(void)
         return 1;
     }
 
+    CODE_INSTALLED = isProgramInstalled("code");
     EMACS_INSTALLED = isProgramInstalled("emacs");
     FILE_INSTALLED = isProgramInstalled("file");
     FLOW_CTRL_INSTALLED = isProgramInstalled("flow");
+    GEDIT_INSTALLED = isProgramInstalled("gedit");
+    GTED_INSTALLED = isProgramInstalled("gnome-text-editor");
+    KATE_INSTALLED = isProgramInstalled("kate");
     MG_INSTALLED = isProgramInstalled("mg");
+    MOUSEPAD_INSTALLED = isProgramInstalled("mousepad");
     NANO_INSTALLED = isProgramInstalled("nano");
     NVIM_INSTALLED = isProgramInstalled("nvim");
+    PLUMA_INSTALLED = isProgramInstalled("pluma");
     VI_INSTALLED = isProgramInstalled("vi");
     VIM_INSTALLED = isProgramInstalled("vim");
+    XED_INSTALLED = isProgramInstalled("xed");
 
     char currPath[PATH_MAX];
     size_t currPathLen;
@@ -760,7 +794,7 @@ int main(void)
     int updateDirContents = 1;
     int fullRedraw = 1;
 
-    char debugScreen[400] = "Term cols: %d, term rows: %d, dir entries: %d, cursor pos: %d, emacs installed: %d, file installed: %d, Flow Control installed: %d, Mg installed: %d, nano installed: %d, Neovim installed: %d, vi/vim installed: %d, Vim/Neovim installed: %d";
+    char debugScreen[200] = "Term cols: %d, term rows: %d, dir entries: %d, cursor pos: %d";
 
     char helpScreen[700];
     snprintf(helpScreen, 700, "\033[%smKey binds\033[%sm\n\033[%sm[H/A/left]\033[%sm up directory \033[%sm[J/S/down]\033[%sm cursor down \033[%sm[K/W/up]\033[%sm cursor up \033[%sm[L/D/right]\033[%sm open directory/file \033[%sm[i]\033[%sm inspect selected (if file installed) \033[%sm[.]\033[%sm toggle hidden entires \033[%sm[h]\033[%sm show help \033[%sm[q]\033[%sm quit\n\n\033[%smEntry types\033[%sm\n\033[%sm'd'\033[%sm directory \033[%sm'f'\033[%sm regular file \033[%sm'x'\033[%sm executable file \033[%sm'b'\033[%sm block device \033[%sm'c'\033[%sm character device \033[%sm'l'\033[%sm symbolic link \033[%sm's'\033[%sm UNIX domain socket \033[%sm'|'\033[%sm named pipe (FIFO) \033[%sm'?'\033[%sm unknown", COL_FOR_HEADING, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_HEADING, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET, COL_FOR_CODE, COL_RESET);
@@ -835,8 +869,8 @@ int main(void)
                 break;
 
             case DEBUG:
-                char debugMsgProcessed[400];
-                snprintf(debugMsgProcessed, 400, debugScreen, TERM_SIZE.ws_col, TERM_SIZE.ws_row, entryCount, cursor, EMACS_INSTALLED, FILE_INSTALLED, FLOW_CTRL_INSTALLED, MG_INSTALLED, NANO_INSTALLED, NVIM_INSTALLED, VI_INSTALLED, VIM_INSTALLED);
+                char debugMsgProcessed[200];
+                snprintf(debugMsgProcessed, 200, debugScreen, TERM_SIZE.ws_col, TERM_SIZE.ws_row, entryCount, cursor);
                 printGenericScreen("Debug", debugMsgProcessed);
                 break;
 
