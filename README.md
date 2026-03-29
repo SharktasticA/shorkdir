@@ -4,9 +4,9 @@ A lightweight Linux terminal-based file browser. It is designed to provide simpl
 
 
 
-## Issues
+## Known issues
 
-shorkdir can produce flickering on some hardware/terminal emulations, usually on older/slower hardware. shorkdir will soon be modified to only redraw what is needed instead of always redrawing everything, which should reduce this.
+shorkdir _can_ produce flickering on some hardware and terminal emulators. This is usually due to its simplistic design and how it 'redraws' the screen after each update. I am working on optimising this to reduce it as much as possible. :)
 
 
 

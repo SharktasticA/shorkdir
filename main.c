@@ -495,6 +495,8 @@ void printDir(struct dirent **dirContents, int entryCount, int cursor)
 
     for (int i = offset; i < entryCount && i < offset + availHeight; i++)
     {
+        printf("\x1b[K");
+        
         char prefix = '?';
         switch (dirContents[i]->d_type)
         {
@@ -756,6 +758,7 @@ int main(void)
     int entryCount = 0;
     int cursor = 1;
     int updateDirContents = 1;
+    int fullRedraw = 1;
 
     char debugScreen[400] = "Term cols: %d, term rows: %d, dir entries: %d, cursor pos: %d, emacs installed: %d, file installed: %d, Flow Control installed: %d, Mg installed: %d, nano installed: %d, Neovim installed: %d, vi/vim installed: %d, Vim/Neovim installed: %d";
 
@@ -783,23 +786,38 @@ int main(void)
             updateDirContents = 0;
         }
 
-        clearScreen();
-        printHeader(currPath);
-        printDir(dirContents, entryCount, cursor);
-        printFooter();
+        if (fullRedraw)
+        {
+            clearScreen();
+            printHeader(currPath);
+            printDir(dirContents, entryCount, cursor);
+            printFooter();
+        }
+        else
+        {
+#ifdef WITH_COL
+            printf("\x1b[2;1H");
+#else
+            printf("\x1b[3;1H");
+#endif
+            printDir(dirContents, entryCount, cursor);
+        }
 
         enum NavInput input = getNavInput();
 
+        fullRedraw = 1;
         switch (input)
         {
             case CURSOR_UP:
                 cursor--;
                 if (cursor < 1) cursor = entryCount;
+                fullRedraw = 0;
                 break;
 
             case CURSOR_DOWN:
                 cursor++;
                 if (cursor > entryCount) cursor = 1;
+                fullRedraw = 0;
                 break;
 
             case DIR_UP:
