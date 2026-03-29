@@ -59,31 +59,33 @@ Simply run `shorkdir` to use. When running, you are technically running a bootst
 <table style="table-layout: fixed; width: 100%;">
   <tr>
     <td style="width: 50%; text-align: center;"><img src="screenshots/86box_root_shork-486.png" style="width: 100%;" /></td>
+    <td style="width: 50%; text-align: center;"><img src="screenshots/86box_root_shork-486_no_col.png" style="width: 100%;" /></td>
+  </tr>
+  <tr>
+    <td style="width: 50%;">Browsing root directory (w/ colour enabled)</td>
+    <td style="width: 50%;">Browsing root directory (w/o colour enabled)</td>
+  </tr>
+</table>
+
+<table style="table-layout: fixed; width: 100%;">
+  <tr>
     <td style="width: 50%; text-align: center;"><img src="screenshots/86box_usr_bin_shork-486.png" style="width: 100%;" /></td>
-  </tr>
-  <tr>
-    <td style="width: 50%;">Browsing root directory</td>
-    <td style="width: 50%;">Browsing /usr/bin</td>
-  </tr>
-</table>
-
-<table style="table-layout: fixed; width: 100%;">
-  <tr>
     <td style="width: 50%; text-align: center;"><img src="screenshots/86box_help_shork-486.png" style="width: 100%;" /></td>
-    <td style="width: 50%; text-align: center;"><img src="screenshots/86box_open_shork-486.png" style="width: 100%;" /></td>
   </tr>
   <tr>
+    <td style="width: 50%;">Browsing /usr/bin</td>
     <td style="width: 50%;">Help screen</td>
-    <td style="width: 50%;">Open screen</td>
   </tr>
 </table>
 
 <table style="table-layout: fixed; width: 100%;">
   <tr>
-    <td style="width: 100%; text-align: center;"><img src="screenshots/86box_inspect_ascii_shork-486.png" style="width: 1000%;" /></td>
+    <td style="width: 50%; text-align: center;"><img src="screenshots/86box_open_shork-486.png" style="width: 100%;" /></td>
+    <td style="width: 50%; text-align: center;"><img src="screenshots/86box_inspect_ascii_shork-486.png" style="width: 100%;" /></td>
   </tr>
   <tr>
-    <td style="width: 100%;">Inspect screen (text file example)</td>
+    <td style="width: 50%;">Open screen</td>
+    <td style="width: 50%;">Inspect screen (text file example)</td>
   </tr>
 </table>
 
