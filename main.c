@@ -525,12 +525,12 @@ void printDir(struct dirent **dirContents, int entryCount, int cursor, int curso
         printf("\x1b[%d;1H[\033[%sm*\033[%sm]", rowCurr, COL_FOR_CURSOR, COL_RESET);
 
         // DEBUG
-        printf("\x1b[1;%dH1", TERM_SIZE.ws_col);
+        //printf("\x1b[1;%dH1", TERM_SIZE.ws_col);
         return;
     }
 
     // DEBUG
-    printf("\x1b[1;%dH0", TERM_SIZE.ws_col);
+    //printf("\x1b[1;%dH0", TERM_SIZE.ws_col);
 
     int canGoUp = offset > 0;
     int canGoDown = (offset + availHeight) < entryCount;
