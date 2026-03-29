@@ -713,7 +713,16 @@ void openFile(char *currDir, struct dirent *entry)
         choice = getIntInput("Select option", 1, count, 1);
 #endif
 
-        if (choice != -1) break;
+        if (choice == -1)
+        {
+#ifdef WITH_COL
+            printf("\033[0m");
+            clearScreen();
+#endif
+            continue;
+        }
+
+        break;
     }
 
     if (choice == 1) return;
