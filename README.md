@@ -19,6 +19,7 @@ You just need a C compiler (tested with GCC with either glibc or musl).
 ### Compilation
 
 Simply run `make` to compile shorkdir.
+
 ### Installation
 
 Run `make install` to install to `/usr/bin` (you may need `sudo` if not installing as root). If you want to install it elsewhere, you can override the install location prefix like `make PREFIX=/usr/local install`.
@@ -31,7 +32,8 @@ Simply run `shorkdir` to use. You are technically running a bootstrap shell scri
 
 ### Arguments
 
-* `-nc`, `--no-col`: Disables colour support.
+* `-h`, `--help`: Shows help information.
+* `-nc`, `--no-col`: Disables all coloured output.
 
 ### Key binds
 

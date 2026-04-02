@@ -653,6 +653,18 @@ void showCursor(void)
     if (COL_ENABLED) printf("\033[%sm", COL_RESET);
 }
 
+void showHelp(void)
+{
+    char cmdDesc[300] = "A terminal-based file browser, designed to provide simple, fast directory browsing and navigation. It can try to open a selected file in a installed text editor. Provided that file is installed, it can also identify and describe a selected file.\n";
+    formatNewLines(cmdDesc, TERM_SIZE.ws_col, NULL);
+    printf("%s\n", cmdDesc);
+
+    char usage[300] = "Usage: shorkdir [OPTIONS] [DIRECTORY]\n\nOptions:\n-h, --help       Displays help information and exits.\n-nc, --no-col    Disables all coloured output.\n\nArguments:\nDIRECTORY        Path to a directory to start at. If excluded, the current directory will be opened instead.\n";
+    formatNewLines(usage, TERM_SIZE.ws_col, NULL);
+    printf("%s", usage);
+
+}
+
 /**
  * @param currPath Current working directory path
  */
@@ -797,10 +809,18 @@ int main(int argc, char *argv[])
         perror("ERROR: terminal size too small (must be 62x14 or more)");
         return 1;
     }
+    
+    char currPath[PATH_MAX];
+    currPath[0] = '\0';
 
     for (int i = 1; i < argc; i++)
     {
-        if ((strcmp(argv[i], "-nc") == 0) || (strcmp(argv[i], "--no-col") == 0))
+        if ((strcmp(argv[i], "-h") == 0) || (strcmp(argv[i], "--help") == 0))
+        {
+            showHelp();
+            return 0;
+        }
+        else if ((strcmp(argv[i], "-nc") == 0) || (strcmp(argv[i], "--no-col") == 0))
         {
             COL_ENABLED = 0;
             COL_FOR_ARROW = COL_RESET;
@@ -810,6 +830,21 @@ int main(int argc, char *argv[])
             COL_FOR_OL = COL_RESET;
             continue;
         }
+        else
+        {
+            DIR *dir = opendir(argv[i]);
+            if (dir != NULL)
+            {
+                strncpy(currPath, argv[i], PATH_MAX - 1);
+                closedir(dir);
+            }
+        }
+    }
+
+    if (currPath[0] == '\0' && getcwd(currPath, sizeof(currPath)) == NULL)
+    {
+        perror("ERROR: failed to get current path");
+        return 1;
     }
 
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -832,13 +867,6 @@ int main(int argc, char *argv[])
     VIM_INSTALLED = isProgramInstalled("vim");
     XED_INSTALLED = isProgramInstalled("xed");
 
-    char currPath[PATH_MAX];
-    size_t currPathLen;
-    if (getcwd(currPath, sizeof(currPath)) == NULL)
-    {
-        perror("ERROR: failed to get current path");
-        return 1;
-    }
 
     enableRawMode();
     printf("\033[?25l");
@@ -846,6 +874,7 @@ int main(int argc, char *argv[])
     int running = 1;
     struct dirent **dirContents = NULL;
     int entryCount = 0;
+    size_t currPathLen;
     int cursor = 1;
     int cursorPrev = 0;
     int updateDirContents = 1;
