@@ -19,20 +19,19 @@ You just need a C compiler (tested with GCC with either glibc or musl).
 ### Compilation
 
 Simply run `make` to compile shorkdir.
-
-#### With colours
-
-shorkdir can have some colour that helps with legibility and recovers two extra rows for directory listing space. To enable it, add the `WITH_COL` flag with any value assigned to it; for example, `make WITH_COL=1`. Note that if you switch between compiling with or without this flag, you will need to run `make clean` before compiling again.
-
 ### Installation
 
-Run `make install` to install to `/usr/bin` (you may need `sudo` if not installing as root). If you want to install it elsewhere, you can override the install location prefix like `make PREFIX=/usr/local install`. You may include the `WITH_COL` flag as well.
+Run `make install` to install to `/usr/bin` (you may need `sudo` if not installing as root). If you want to install it elsewhere, you can override the install location prefix like `make PREFIX=/usr/local install`.
 
 
 
 ## Running
 
-Simply run `shorkdir` to use. When running, you are technically running a bootstrap shell script, required for changing the current directory once the program exits. `shorkdir-exec` is binary itself, which can be run directly if changing directory upon exiting is not desired.
+Simply run `shorkdir` to use. You are technically running a bootstrap shell script, required for changing the current directory once the program exits. `shorkdir-exec` is binary itself, which can be run directly if changing directory upon exiting is not desired.
+
+### Arguments
+
+* `-nc`, `--no-col`: Disables colour support.
 
 ### Key binds
 

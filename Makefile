@@ -6,10 +6,6 @@ STRIP ?= strip
 CFLAGS += -I.
 LDFLAGS += -static
 
-ifdef WITH_COL
-	CFLAGS += -DWITH_COL
-endif
-
 SRC = main.c
 
 shorkdir-exec: $(SRC)

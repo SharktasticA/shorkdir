@@ -24,8 +24,29 @@
 
 
 
-#define COL_RESET               "0"
-#ifdef WITH_COL
+enum NavInput 
+{
+    CURSOR_DOWN,
+    CURSOR_UP,
+    DEBUG,
+    DIR_UP,
+    DIR_DOWN,
+    HELP,
+    INSPECT,
+    QUIT,
+    TOGGLE_HIDDEN,
+    INVALID
+};
+
+typedef struct 
+{
+    char *name;
+    char *payload;
+    int visible;
+} MenuItem;
+
+
+
 #define COL_BAK_BLACK           "40"
 #define COL_BAK_BLUE            "44"
 #define COL_BAK_CYAN            "46"
@@ -53,50 +74,21 @@
 #define COL_FOR_WHITE           "0;37"
 #define COL_FOR_YELLOW          "0;33"
 
+#define COL_RESET               "0"
 #define COL_FOR_RESET           "39"
 #define COL_BAK_RESET           "49"
-
-#define COL_FOR_ARROW           COL_FOR_BOLD_RED
-#define COL_FOR_CODE            COL_FOR_BOLD_RED
-#define COL_FOR_CURSOR          COL_FOR_BOLD_CYAN
-#define COL_FOR_HEADING         COL_FOR_BOLD_CYAN
-#define COL_FOR_OL              COL_FOR_GREEN
-#else
-#define COL_FOR_ARROW           COL_RESET
-#define COL_FOR_CODE            COL_RESET
-#define COL_FOR_CURSOR          COL_RESET
-#define COL_FOR_HEADING         COL_RESET
-#define COL_FOR_OL              COL_RESET
-#endif
 
 #define DT_EXE 16
 
 
 
-enum NavInput 
-{
-    CURSOR_DOWN,
-    CURSOR_UP,
-    DEBUG,
-    DIR_UP,
-    DIR_DOWN,
-    HELP,
-    INSPECT,
-    QUIT,
-    TOGGLE_HIDDEN,
-    INVALID
-};
-
-typedef struct 
-{
-    char *name;
-    char *payload;
-    int visible;
-} MenuItem;
-
-
-
 static int CODE_INSTALLED = 0;
+static int COL_ENABLED = 1;
+static char *COL_FOR_ARROW = COL_FOR_BOLD_RED;
+static char *COL_FOR_CODE = COL_FOR_BOLD_RED;
+static char *COL_FOR_CURSOR = COL_FOR_BOLD_CYAN;
+static char *COL_FOR_HEADING = COL_FOR_BOLD_CYAN;
+static char *COL_FOR_OL = COL_FOR_GREEN;
 static int DOTFILES_VISIBLE = 1;
 static int EMACS_INSTALLED = 0;
 static int FILE_INSTALLED = 0;
@@ -124,9 +116,9 @@ static int XED_INSTALLED = 0;
 void awaitInput(void)
 {
     int len = printf("Press any key to continue... ");
-#ifdef WITH_COL
-    for (size_t i = len; i < TERM_SIZE.ws_col; i++) printf(" ");
-#endif
+    if (COL_ENABLED)
+        for (size_t i = len; i < TERM_SIZE.ws_col; i++)
+            printf(" ");
     getchar();
 }
 
@@ -156,8 +148,7 @@ int compareDirName(const void *a, const void *b)
  */
 void disableRawMode(void)
 {
-    if (RAW_MODE_ENABLED)
-        tcsetattr(STDIN_FILENO, TCSANOW, &OLD_TERMIOS);
+    tcsetattr(STDIN_FILENO, TCSANOW, &OLD_TERMIOS);
 }
 
 /**
@@ -253,11 +244,12 @@ int getIntInput(char *prompt, int min, int max, int negativeIfInvalid)
     {
         disableRawMode();
 
-#ifdef WITH_COL
-        printf("\033[%s;%sm", COL_FOR_BOLD_WHITE, COL_BAK_BLUE);
-        for (int i = 0; i < TERM_SIZE.ws_col; i++) printf(" ");
-        printf("\033[1G");
-#endif
+        if (COL_ENABLED)
+        {
+            printf("\033[%s;%sm", COL_FOR_BOLD_WHITE, COL_BAK_BLUE);
+            for (int i = 0; i < TERM_SIZE.ws_col; i++) printf(" ");
+            printf("\033[1G");
+        }
 
         printf("%s", prompt);
         if (min != max) printf(" (%d-%d)", min, max);
@@ -290,9 +282,7 @@ int getIntInput(char *prompt, int min, int max, int negativeIfInvalid)
 
     } while (!isValid);
 
-#ifdef WITH_COL
-    printf("\033[%sm", COL_RESET);
-#endif
+    if (COL_ENABLED) printf("\033[%sm", COL_RESET);
 
     return val;
 }
@@ -435,36 +425,35 @@ void printGenericScreen(char *title, char *body)
 {
     clearScreen();
 
-#ifdef WITH_COL
-    printf("\033[%s;%sm", COL_FOR_BOLD_WHITE, COL_BAK_BLUE);
-    int len = printf("%s", title);
-    for (size_t i = len; i < TERM_SIZE.ws_col; i++) printf(" ");
-    printf("\033[%sm", COL_RESET);
-#else
-    printf("%s\n", title);
-    for (int i = 0; i < TERM_SIZE.ws_col; i++) printf("-");
-#endif
+    if (COL_ENABLED)
+    {
+        printf("\033[%s;%sm", COL_FOR_BOLD_WHITE, COL_BAK_BLUE);
+        int len = printf("%s", title);
+        for (size_t i = len; i < TERM_SIZE.ws_col; i++) printf(" ");
+        printf("\033[%sm", COL_RESET);
 
-    int lines = formatNewLines(body, TERM_SIZE.ws_col, NULL);
+        int lines = formatNewLines(body, TERM_SIZE.ws_col, NULL);
+        int availHeight = TERM_SIZE.ws_row - lines - 1;
 
-#ifdef WITH_COL
-    int availHeight = TERM_SIZE.ws_row - lines - 1;
-#else
-    int availHeight = TERM_SIZE.ws_row - lines - 3;
-#endif
+        printf("%s\n", body);
+        for (int i = 1; i < availHeight; i++) printf("\n");
+        printf("\033[%s;%sm", COL_FOR_BOLD_WHITE, COL_BAK_BLUE);
+        awaitInput();
+        printf("\033[%sm", COL_RESET);
+    }
+    else
+    {
+        printf("%s\n", title);
+        for (int i = 0; i < TERM_SIZE.ws_col; i++) printf("-");
 
-    printf("%s\n", body);
-    for (int i = 1; i < availHeight; i++) printf("\n");
+        int lines = formatNewLines(body, TERM_SIZE.ws_col, NULL);
+        int availHeight = TERM_SIZE.ws_row - lines - 3;
 
-#ifdef WITH_COL
-    printf("\033[%s;%sm", COL_FOR_BOLD_WHITE, COL_BAK_BLUE);
-    awaitInput();
-    printf("\033[%sm", COL_RESET);
-#else
-    for (int i = 0; i < TERM_SIZE.ws_col; i++) printf("-");
-    awaitInput();
-#endif
-
+        printf("%s\n", body);
+        for (int i = 1; i < availHeight; i++) printf("\n");
+        for (int i = 0; i < TERM_SIZE.ws_col; i++) printf("-");
+        awaitInput();
+    }
 }
 
 /**
@@ -476,13 +465,13 @@ void printGenericScreen(char *title, char *body)
  */
 void printDir(struct dirent **dirContents, int entryCount, int cursor, int cursorPrev)
 {
-#ifdef WITH_COL
     int baseRow = 2;
     int availHeight = TERM_SIZE.ws_row - 2;
-#else
-    int baseRow = 3;
-    int availHeight = TERM_SIZE.ws_row - 4;
-#endif
+    if (!COL_ENABLED)
+    {
+        baseRow = 3;
+        availHeight = TERM_SIZE.ws_row - 4;
+    }
 
     // If directory is empty
     if (!dirContents || entryCount == 0)
@@ -578,11 +567,10 @@ void printDir(struct dirent **dirContents, int entryCount, int cursor, int curso
 
 void printFooter(void)
 {
-#ifdef WITH_COL
-    printf("\033[%s;%sm", COL_FOR_BOLD_WHITE, COL_BAK_BLUE);
-#else
-    for (int i = 0; i < TERM_SIZE.ws_col; i++) printf("-");
-#endif
+    if (COL_ENABLED)
+        printf("\033[%s;%sm", COL_FOR_BOLD_WHITE, COL_BAK_BLUE);
+    else
+        for (int i = 0; i < TERM_SIZE.ws_col; i++) printf("-");
 
     char *inspectStr = "";
     if (FILE_INSTALLED)
@@ -594,10 +582,11 @@ void printFooter(void)
 
     int len = printf("[hjkl] Navigate%s%s [?] Help [q] Quit ", inspectStr, hiddenStr);
 
-#ifdef WITH_COL
-    for (int i = len; i < TERM_SIZE.ws_col; i++) printf(" ");
-    printf("\033[%sm", COL_RESET);
-#endif
+    if (COL_ENABLED)
+    {
+        for (int i = len; i < TERM_SIZE.ws_col; i++) printf(" ");
+        printf("\033[%sm", COL_RESET);
+    }
 }
 
 /**
@@ -605,19 +594,18 @@ void printFooter(void)
  */
 void printHeader(char *currPath)
 {
-#ifdef WITH_COL
-    printf("\033[%s;%sm", COL_FOR_BOLD_WHITE, COL_BAK_BLUE);
-#endif
+    if (COL_ENABLED)
+        printf("\033[%s;%sm", COL_FOR_BOLD_WHITE, COL_BAK_BLUE);
 
     size_t dirLen = strlen(currPath);
     if (dirLen <= TERM_SIZE.ws_col) 
     {
         printf("%s", currPath);
-#ifdef WITH_COL
-        for (size_t i = dirLen; i < TERM_SIZE.ws_col; i++)
-            printf(" ");
-#endif
-        printf("\n");
+        if (COL_ENABLED)
+            for (size_t i = dirLen; i < TERM_SIZE.ws_col; i++)
+                printf(" ");
+        else
+            printf("\n");
     }
     else
     {
@@ -626,11 +614,10 @@ void printHeader(char *currPath)
         printf("...%s\n", start);
     }
 
-#ifdef WITH_COL
-    printf("\033[%sm", COL_RESET);
-#else
-    for (int i = 0; i < TERM_SIZE.ws_col; i++) printf("-");
-#endif
+    if (COL_ENABLED)
+        printf("\033[%sm", COL_RESET);
+    else
+        for (int i = 0; i < TERM_SIZE.ws_col; i++) printf("-");
 }
 
 /**
@@ -663,9 +650,21 @@ void inspectEntry(char *currPath, struct dirent *entry)
 void showCursor(void)
 {
     printf("\033[?25h");
-#ifdef WITH_COL
-    printf("\033[%sm", COL_RESET);
-#endif
+    if (COL_ENABLED) printf("\033[%sm", COL_RESET);
+}
+
+/**
+ * @param currPath Current working directory path
+ */
+void writeLastDir(char *currDir)
+{
+    const char *tmpFile = "/tmp/shorkdir_last_dir.txt";
+    FILE *stream = fopen(tmpFile, "w");
+    if (stream)
+    {
+        fprintf(stream, "%s\n", currDir);
+        fclose(stream);
+    }
 }
 
 /**
@@ -718,15 +717,18 @@ void openFile(char *currDir, struct dirent *entry)
     {
         clearScreen();
 
-#ifdef WITH_COL
-        printf("\033[%s;%sm", COL_FOR_BOLD_WHITE, COL_BAK_BLUE);
-        int len = printf("Open: %s", filePath);
-        for (size_t i = len; i < TERM_SIZE.ws_col; i++) printf(" ");
-        printf("\033[%sm\n", COL_RESET);
-#else
-        printf("Open: %s\n", filePath);
-        for (int i = 0; i < TERM_SIZE.ws_col; i++) printf("-");
-#endif
+        if (COL_ENABLED)
+        {
+            printf("\033[%s;%sm", COL_FOR_BOLD_WHITE, COL_BAK_BLUE);
+            int len = printf("Open: %s", filePath);
+            for (size_t i = len; i < TERM_SIZE.ws_col; i++) printf(" ");
+            printf("\033[%sm\n", COL_RESET);
+        }
+        else
+        {
+            printf("Open: %s\n", filePath);
+            for (int i = 0; i < TERM_SIZE.ws_col; i++) printf("-");
+        }        
 
         int count = 0;
 
@@ -739,24 +741,29 @@ void openFile(char *currDir, struct dirent *entry)
             }
         }
 
-#ifdef WITH_COL
-        int availHeight = TERM_SIZE.ws_row - count - 1;
-        for (int i = 1; i < availHeight; i++) printf("\n");
-        printf("\033[%s;%sm", COL_FOR_BOLD_WHITE, COL_BAK_BLUE);
-        choice = getIntInput("Select option", 1, count, 1);
-#else
-        int availHeight = TERM_SIZE.ws_row - count - 3;
-        for (int i = 1; i < availHeight; i++) printf("\n");
-        for (int i = 0; i < TERM_SIZE.ws_col; i++) printf("-");
-        choice = getIntInput("Select option", 1, count, 1);
-#endif
+        if (COL_ENABLED)
+        {
+            int availHeight = TERM_SIZE.ws_row - count - 1;
+            for (int i = 1; i < availHeight; i++) printf("\n");
+            printf("\033[%s;%sm", COL_FOR_BOLD_WHITE, COL_BAK_BLUE);
+            choice = getIntInput("Select option", 1, count, 1);
+        }
+        else
+        {
+            int availHeight = TERM_SIZE.ws_row - count - 3;
+            for (int i = 1; i < availHeight; i++) printf("\n");
+            for (int i = 0; i < TERM_SIZE.ws_col; i++) printf("-");
+            choice = getIntInput("Select option", 1, count, 1);
+        }
+
 
         if (choice == -1)
         {
-#ifdef WITH_COL
-            printf("\033[0m");
-            clearScreen();
-#endif
+            if (COL_ENABLED)
+            {
+                printf("\033[0m");
+                clearScreen();
+            }
             continue;
         }
 
@@ -767,6 +774,9 @@ void openFile(char *currDir, struct dirent *entry)
 
     showCursor();
     disableRawMode();
+    writeLastDir(currDir);
+    clearScreen();
+
     char *argv[] = { 
         menu[indices[choice - 1]].payload,
         filePath,
@@ -777,35 +787,34 @@ void openFile(char *currDir, struct dirent *entry)
     exit(1);
 }
 
-/**
- * @param currPath Current working directory path
- */
-void writeLastDir(char *currDir)
+
+
+int main(int argc, char *argv[])
 {
-    const char *tmpFile = "/tmp/shorkdir_last_dir.txt";
-    FILE *stream = fopen(tmpFile, "w");
-    if (stream)
-    {
-        fprintf(stream, "%s\n", currDir);
-        fclose(stream);
-    }
-}
-
-
-
-int main(void)
-{
-    setvbuf(stdout, NULL, _IONBF, 0);
-
-    atexit(showCursor);
-    atexit(disableRawMode);
-
     TERM_SIZE = getTerminalSize();
     if (TERM_SIZE.ws_col < 62 || TERM_SIZE.ws_row < 14)
     {
         perror("ERROR: terminal size too small (must be 62x14 or more)");
         return 1;
     }
+
+    for (int i = 1; i < argc; i++)
+    {
+        if ((strcmp(argv[i], "-nc") == 0) || (strcmp(argv[i], "--no-col") == 0))
+        {
+            COL_ENABLED = 0;
+            COL_FOR_ARROW = COL_RESET;
+            COL_FOR_CODE = COL_RESET;
+            COL_FOR_CURSOR = COL_RESET;
+            COL_FOR_HEADING = COL_RESET;
+            COL_FOR_OL = COL_RESET;
+            continue;
+        }
+    }
+
+    setvbuf(stdout, NULL, _IONBF, 0);
+    atexit(showCursor);
+    atexit(disableRawMode);
 
     CODE_INSTALLED = isProgramInstalled("code");
     EMACS_INSTALLED = isProgramInstalled("emacs");
@@ -877,11 +886,10 @@ int main(void)
         }
         else
         {
-#ifdef WITH_COL
-            printf("\x1b[2;1H");
-#else
-            printf("\x1b[3;1H");
-#endif
+            if (COL_ENABLED)
+                printf("\x1b[2;1H");
+            else
+                printf("\x1b[3;1H");
             printDir(dirContents, entryCount, cursor, cursorPrev);
         }
 
