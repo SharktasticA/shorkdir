@@ -653,6 +653,39 @@ void showCursor(void)
     if (COL_ENABLED) printf("\033[%sm", COL_RESET);
 }
 
+void showInspectWaitDiag(void)
+{
+    char *lines[5];
+    if (COL_ENABLED)
+    {
+        lines[0] = "                                                           ";
+        lines[1] = "   The selected item is currently being inspected. This    ";
+        lines[2] = "   may take a while on 486 or Pentium (P5) era hardware.   ";
+        lines[3] = "   Please do not press any keys until it completes.        ";
+        lines[4] = "                                                           ";
+        printf("\033[%s;%sm", COL_FOR_WHITE, COL_BAK_BLUE);
+    }
+    else
+    {
+        lines[0] = "###########################################################";
+        lines[1] = "## The selected item is currently being inspected. This  ##";
+        lines[2] = "## may take a while on 486 or Pentium (P5) era hardware. ##";
+        lines[3] = "## Please do not press any keys until it completes.      ##";
+        lines[4] = "###########################################################";
+    }
+
+    int startRow = (TERM_SIZE.ws_row - 5 + 1) / 2;
+    for (int i = 0; i < 5; i++)
+    {
+        int len = strlen(lines[i]);
+        int col = (TERM_SIZE.ws_col - len) / 2 + 1;
+        printf("\x1b[%d;%dH%s", startRow + i, col, lines[i]);
+    }
+
+    if (COL_ENABLED) printf("\033[%sm", COL_RESET);
+}
+
+
 void showHelp(void)
 {
     char cmdDesc[300] = "A terminal-based file browser, designed to provide simple, fast directory browsing and navigation. It can try to open a selected file in a installed text editor. Provided that file is installed, it can also identify and describe a selected file.\n";
@@ -662,7 +695,6 @@ void showHelp(void)
     char usage[300] = "Usage: shorkdir [OPTIONS] [DIRECTORY]\n\nOptions:\n-h, --help       Displays help information and exits.\n-nc, --no-col    Disables all coloured output.\n\nArguments:\nDIRECTORY        Path to a directory to start at. If excluded, the current directory will be opened instead.\n";
     formatNewLines(usage, TERM_SIZE.ws_col, NULL);
     printf("%s", usage);
-
 }
 
 /**
@@ -795,7 +827,7 @@ void openFile(char *currDir, struct dirent *entry)
         NULL
     };
     execvp(argv[0], argv);
-    perror("ERROR: failed to open editor");
+    printf("ERROR: failed to open editor\n");
     exit(1);
 }
 
@@ -806,7 +838,7 @@ int main(int argc, char *argv[])
     TERM_SIZE = getTerminalSize();
     if (TERM_SIZE.ws_col < 62 || TERM_SIZE.ws_row < 14)
     {
-        perror("ERROR: terminal size too small (must be 62x14 or more)");
+        printf("ERROR: terminal size too small (must be 62x14 or larger)\n");
         return 1;
     }
     
@@ -828,7 +860,6 @@ int main(int argc, char *argv[])
             COL_FOR_CURSOR = COL_RESET;
             COL_FOR_HEADING = COL_RESET;
             COL_FOR_OL = COL_RESET;
-            continue;
         }
         else
         {
@@ -843,7 +874,7 @@ int main(int argc, char *argv[])
 
     if (currPath[0] == '\0' && getcwd(currPath, sizeof(currPath)) == NULL)
     {
-        perror("ERROR: failed to get current path");
+        printf("ERROR: failed to get current path\n");
         return 1;
     }
 
@@ -866,7 +897,6 @@ int main(int argc, char *argv[])
     VI_INSTALLED = isProgramInstalled("vi");
     VIM_INSTALLED = isProgramInstalled("vim");
     XED_INSTALLED = isProgramInstalled("xed");
-
 
     enableRawMode();
     printf("\033[?25l");
@@ -899,7 +929,7 @@ int main(int argc, char *argv[])
             currPathLen = strlen(currPath);
             if (dirContents == NULL && entryCount > 0)
             {
-                perror("ERROR: cannot get directory contents");
+                printf("ERROR: cannot get directory contents\n");
                 disableRawMode();
                 return 1;
             }
@@ -986,7 +1016,10 @@ int main(int argc, char *argv[])
 
             case INSPECT:
                 if (FILE_INSTALLED && entryCount > 0)
+                {
+                    showInspectWaitDiag();
                     inspectEntry(currPath, dirContents[cursor - 1]);
+                }
                 break;
                 
             case TOGGLE_HIDDEN:
