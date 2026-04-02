@@ -527,7 +527,7 @@ void printDir(struct dirent **dirContents, int entryCount, int cursor, int curso
 
     for (int i = offset; i < entryCount && i < offset + availHeight; i++)
     {
-        printf("\x1b[K");
+        printf("\x1b[%d;1H\x1b[K", baseRow + linesPrinted);
 
         char prefix = '?';
         switch (dirContents[i]->d_type)
