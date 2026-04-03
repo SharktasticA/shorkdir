@@ -653,38 +653,73 @@ void showCursor(void)
     if (COL_ENABLED) printf("\033[%sm", COL_RESET);
 }
 
-void showInspectWaitDiag(void)
+/**
+ * General center-justified dialog message.
+ * @param message Message the dialog should display
+ * @param width How wide the dialog should be
+ */
+void showDialog(char *message, int width)
 {
-    char *lines[5];
-    if (COL_ENABLED)
+    if (width > TERM_SIZE.ws_col - 6) width = TERM_SIZE.ws_col - 6;
+    
+    // Modify message to fit the given width
+    size_t msgLen = strlen(message) + 1;
+    char buf[msgLen + 1];
+    strncpy(buf, message, msgLen - 1);
+    buf[msgLen - 1] = '\0';
+    int lines = formatNewLines(buf, width, NULL);
+
+    // Calculate where to begin printing the dialog
+    int startRow = (TERM_SIZE.ws_row - lines) / 2;
+    int startCol = (TERM_SIZE.ws_col - (width + 4)) / 2 + 1;  
+
+    int pad = '#';
+    if (COL_ENABLED) 
     {
-        lines[0] = "                                                           ";
-        lines[1] = "   The selected item is currently being inspected. This    ";
-        lines[2] = "   may take a while on 486 or Pentium (P5) era hardware.   ";
-        lines[3] = "   Please do not press any keys until it completes.        ";
-        lines[4] = "                                                           ";
+        // Set dialog console colours
         printf("\033[%s;%sm", COL_FOR_WHITE, COL_BAK_BLUE);
-    }
-    else
-    {
-        lines[0] = "###########################################################";
-        lines[1] = "## The selected item is currently being inspected. This  ##";
-        lines[2] = "## may take a while on 486 or Pentium (P5) era hardware. ##";
-        lines[3] = "## Please do not press any keys until it completes.      ##";
-        lines[4] = "###########################################################";
+        pad = ' ';
     }
 
-    int startRow = (TERM_SIZE.ws_row - 5 + 1) / 2;
-    for (int i = 0; i < 5; i++)
+    printf("\x1b[%d;%dH", startRow, startCol);
+    for (int j = 0; j < width + 4; j++) putchar(pad);
+
+    // Print message
+    char *currPos = buf;
+    for (int i = 0; i < lines; i++)
     {
-        int len = strlen(lines[i]);
-        int col = (TERM_SIZE.ws_col - len) / 2 + 1;
-        printf("\x1b[%d;%dH%s", startRow + i, col, lines[i]);
+        char *lineStart = currPos;
+        char *nextNL = strchr(currPos, '\n');
+
+        int len;
+        // If future newline found, prepare to print until reaching it
+        if (nextNL)
+        {
+            len = nextNL - currPos;
+            currPos = nextNL + 1;
+        }
+        // If no future newline, prepare to print the rest of message
+        else
+        {
+            len = strlen(currPos);
+            currPos += len;
+        }
+
+        printf("\x1b[%d;%dH", startRow + 1 + i, startCol);
+
+        printf("%c ", pad);
+        printf("%.*s", len, lineStart);
+        for (int j = len; j < width; j++) putchar(' ');
+        printf(" %c", pad);
     }
 
+    // Print bottom border
+    printf("\x1b[%d;%dH", startRow + 1 + lines, startCol);
+    for (int j = 0; j < width + 4; j++) putchar(pad);
+
+    // Reset console colour
     if (COL_ENABLED) printf("\033[%sm", COL_RESET);
 }
-
 
 void showHelp(void)
 {
@@ -1017,7 +1052,7 @@ int main(int argc, char *argv[])
             case INSPECT:
                 if (FILE_INSTALLED && entryCount > 0)
                 {
-                    showInspectWaitDiag();
+                    showDialog("The selected item is currently being inspected. This may take a while on 486 or Pentium (P5) era hardware. Please do not press any keys until it completes.", 50);
                     inspectEntry(currPath, dirContents[cursor - 1]);
                 }
                 break;
