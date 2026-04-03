@@ -681,6 +681,7 @@ void showDialog(char *message, int width)
         pad = ' ';
     }
 
+    // Print top border
     printf("\x1b[%d;%dH", startRow, startCol);
     for (int j = 0; j < width + 4; j++) putchar(pad);
 
