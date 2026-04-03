@@ -728,9 +728,17 @@ void showHelp(void)
     formatNewLines(cmdDesc, TERM_SIZE.ws_col, NULL);
     printf("%s\n", cmdDesc);
 
-    char usage[300] = "Usage: shorkdir [OPTIONS] [DIRECTORY]\n\nOptions:\n-h, --help       Displays help information and exits.\n-nc, --no-col    Disables all coloured output.\n\nArguments:\nDIRECTORY        Path to a directory to start at. If excluded, the current directory will be opened instead.\n";
+    char usage[60] = "Usage: shorkdir [OPTIONS] [DIRECTORY]\n\n";
     formatNewLines(usage, TERM_SIZE.ws_col, NULL);
     printf("%s", usage);
+
+    char options[130] = "Options:\n-h, --help       Displays help information and exits.\n-nc, --no-col    Disables all coloured output.\n\n";
+    formatNewLines(options, TERM_SIZE.ws_col, "                 ");
+    printf("%s", options);
+
+    char directory[120] = "Directory:\nPath to a directory to start at. If excluded, the current directory will be opened instead.\n";
+    formatNewLines(directory, TERM_SIZE.ws_col, NULL);
+    printf("%s", directory);
 }
 
 /**
