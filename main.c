@@ -883,6 +883,7 @@ void openFile(char *currDir, struct dirent *entry)
 
 int main(int argc, char *argv[])
 {
+    TERM_SIZE = getTerminalSize();
     char currPath[PATH_MAX];
     currPath[0] = '\0';
 
@@ -924,7 +925,6 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    TERM_SIZE = getTerminalSize();
     if (TERM_SIZE.ws_col < 62 || TERM_SIZE.ws_row < 14)
     {
         printf("ERROR: terminal size too small (must be 62x14 or larger)\n");
