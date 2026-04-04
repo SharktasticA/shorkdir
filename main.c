@@ -736,9 +736,13 @@ void showHelp(void)
     formatNewLines(options, TERM_SIZE.ws_col, "                 ");
     printf("%s", options);
 
-    char directory[120] = "Directory:\nPath to a directory to start at. If excluded, the current directory will be opened instead.\n";
+    char directory[120] = "Directory:\nPath to a directory to start at. If excluded, the current directory will be opened instead.\n\n";
     formatNewLines(directory, TERM_SIZE.ws_col, NULL);
     printf("%s", directory);
+
+    char notes[80] = "Notes:\nThe host terminal size must be 62x14 before starting.\n";
+    formatNewLines(notes, TERM_SIZE.ws_col, NULL);
+    printf("%s", notes);
 }
 
 /**
@@ -879,13 +883,6 @@ void openFile(char *currDir, struct dirent *entry)
 
 int main(int argc, char *argv[])
 {
-    TERM_SIZE = getTerminalSize();
-    if (TERM_SIZE.ws_col < 62 || TERM_SIZE.ws_row < 14)
-    {
-        printf("ERROR: terminal size too small (must be 62x14 or larger)\n");
-        return 1;
-    }
-    
     char currPath[PATH_MAX];
     currPath[0] = '\0';
 
@@ -913,14 +910,28 @@ int main(int argc, char *argv[])
                 strncpy(currPath, argv[i], PATH_MAX - 1);
                 closedir(dir);
             }
+            else
+            {
+                printf("ERROR: the specified start directory path appears to be invalid\n");
+                return 1;
+            }
         }
     }
 
     if (currPath[0] == '\0' && getcwd(currPath, sizeof(currPath)) == NULL)
     {
-        printf("ERROR: failed to get current path\n");
+        printf("ERROR: failed to get current directory path\n");
         return 1;
     }
+
+    TERM_SIZE = getTerminalSize();
+    if (TERM_SIZE.ws_col < 62 || TERM_SIZE.ws_row < 14)
+    {
+        printf("ERROR: terminal size too small (must be 62x14 or larger)\n");
+        return 1;
+    }
+    
+
 
     setvbuf(stdout, NULL, _IONBF, 0);
     atexit(showCursor);
