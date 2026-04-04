@@ -732,7 +732,7 @@ void showHelp(void)
     formatNewLines(usage, TERM_SIZE.ws_col, NULL);
     printf("%s", usage);
 
-    char options[130] = "Options:\n-h, --help       Displays help information and exits.\n-nc, --no-col    Disables all coloured output.\n\n";
+    char options[130] = "Options:\n-h, --help       Displays help information and exits\n-nc, --no-col    Disables all coloured output\n\n";
     formatNewLines(options, TERM_SIZE.ws_col, "                 ");
     printf("%s", options);
 
