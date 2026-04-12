@@ -89,6 +89,7 @@ static char *COL_FOR_CODE = COL_FOR_BOLD_RED;
 static char *COL_FOR_CURSOR = COL_FOR_BOLD_CYAN;
 static char *COL_FOR_HEADING = COL_FOR_BOLD_CYAN;
 static char *COL_FOR_OL = COL_FOR_GREEN;
+static char CURSOR_CHAR = '*';
 static int DOTFILES_VISIBLE = 1;
 static int EMACS_INSTALLED = 0;
 static int FILE_INSTALLED = 0;
@@ -414,6 +415,12 @@ int isProgramInstalled(const char *prog)
         dir = strtok(NULL, ":");
     }
     free(paths);
+
+    // Hard-coded check in /usr/libexec 
+    char libexecPath[PATH_MAX];
+    snprintf(libexecPath, PATH_MAX, "/usr/libexec/%s", prog);
+    if (access(libexecPath, X_OK) == 0) return 1;
+
     return 0;
 }
 
@@ -508,18 +515,13 @@ void printDir(struct dirent **dirContents, int entryCount, int cursor, int curso
         int rowCurr = baseRow + (currIndex - offset);
 
         // Remove old line cursor
-        printf("\x1b[%d;1H[ ]", rowPrev);
+        printf("\x1b[%d;1H   ", rowPrev);
 
         // Print new line cursor
-        printf("\x1b[%d;1H[\033[%sm*\033[%sm]", rowCurr, COL_FOR_CURSOR, COL_RESET);
+        printf("\x1b[%d;1H \033[%sm%c\033[%sm ", rowCurr, COL_FOR_CURSOR, CURSOR_CHAR, COL_RESET);
 
-        // DEBUG
-        //printf("\x1b[1;%dH1", TERM_SIZE.ws_col);
         return;
     }
-
-    // DEBUG
-    //printf("\x1b[1;%dH0", TERM_SIZE.ws_col);
 
     int canGoUp = offset > 0;
     int canGoDown = (offset + availHeight) < entryCount;
@@ -551,10 +553,10 @@ void printDir(struct dirent **dirContents, int entryCount, int cursor, int curso
             printf("\033[%smv\033[%sm\n", COL_FOR_ARROW, COL_RESET);
         // Selected line
         else if (i == currIndex)
-            printf("[\033[%sm*\033[%sm] %c %s\n", COL_FOR_CURSOR, COL_RESET, prefix, dirContents[i]->d_name);
+            printf(" \033[%sm%c\033[%sm %c %s\n", COL_FOR_CURSOR, CURSOR_CHAR, COL_RESET, prefix, dirContents[i]->d_name);
         // Other lines
         else
-            printf("[ ] %c %s\n", prefix, dirContents[i]->d_name);
+            printf("   %c %s\n", prefix, dirContents[i]->d_name);
 
         linesPrinted++;
     }
@@ -824,7 +826,7 @@ void openFile(char *currDir, struct dirent *entry)
 
         int count = 0;
 
-        for (int i = 0; i < (int)menuSize; i++)
+        for (int i = 0; i < menuSize; i++)
         {
             if (menu[i].visible)
             {

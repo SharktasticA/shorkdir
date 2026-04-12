@@ -32,8 +32,8 @@ Simply run `shorkdir` to use. You are technically running a bootstrap shell scri
 
 ### Arguments
 
-* `-h`, `--help`: Shows help information and exits.
-* `-nc`, `--no-col`: Disables all coloured output.
+* `-h`, `--help`: Shows help information and exits
+* `-nc`, `--no-col`: Disables all coloured output
 
 ### Key binds
 
