@@ -16,6 +16,7 @@
 #include <dirent.h>
 #include <sys/ioctl.h>
 #include <linux/limits.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -78,7 +79,7 @@ typedef struct
 #define COL_FOR_RESET           "39"
 #define COL_BAK_RESET           "49"
 
-#define DT_EXE 16
+#define DT_EXE                  16
 
 
 
@@ -103,7 +104,6 @@ static int NANO_INSTALLED = 0;
 static int NVIM_INSTALLED = 0;
 static struct termios OLD_TERMIOS;
 static int PLUMA_INSTALLED = 0;
-static int RAW_MODE_ENABLED = 0;
 static struct winsize TERM_SIZE;
 static int VI_INSTALLED = 0;
 static int VIM_INSTALLED = 0;
@@ -163,7 +163,6 @@ void enableRawMode(void)
     newTERMIO = OLD_TERMIOS;
     newTERMIO.c_lflag &= ~(ICANON | ECHO);
     tcsetattr(STDIN_FILENO, TCSANOW, &newTERMIO);
-    RAW_MODE_ENABLED = 1;
 }
 
 /**
@@ -762,6 +761,25 @@ void writeLastDir(char *currDir)
 }
 
 /**
+ * Makes the terminal cursor visible again, resets the terminal's colours and clears the screen
+ * upon exiting.
+ */
+void onExit(void)
+{
+    disableRawMode();
+    showCursor();
+    clearScreen();
+}
+
+/**
+ * Used to handle exiting controllably if SIGINT is received (Ctrl+C).
+ */
+void onSigInt(int sig)
+{
+    exit(0);
+}
+
+/**
  * @param currPath Current working directory path
  * @param entry Directory entry to open
  */
@@ -936,8 +954,8 @@ int main(int argc, char *argv[])
 
 
     setvbuf(stdout, NULL, _IONBF, 0);
-    atexit(showCursor);
-    atexit(disableRawMode);
+    atexit(onExit);
+    signal(SIGINT, onSigInt);
 
     CODE_INSTALLED = isProgramInstalled("code");
     EMACS_INSTALLED = isProgramInstalled("emacs");
@@ -1101,6 +1119,5 @@ int main(int argc, char *argv[])
     }
 
     writeLastDir(currPath);
-    clearScreen();
     return 0;  
 }
