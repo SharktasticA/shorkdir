@@ -1109,6 +1109,10 @@ int main(int argc, char *argv[])
             case QUIT:
                 running = 0;
                 break;
+
+            case INVALID:
+                fullRedraw = 0;
+                break;
         }
     }
 
